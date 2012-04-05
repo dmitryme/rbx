@@ -1,0 +1,12 @@
+{application, log_viewer,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { log_viewer_app, []}},
+  {env, []}
+ ]}.
