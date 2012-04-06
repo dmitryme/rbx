@@ -28,7 +28,8 @@ init([]) ->
        {
           {one_for_one, 5, 10},
           [
-             ?CHILD(log_viewer_srv, worker, [])
+             ?CHILD(log_viewer_srv, worker, []),
+             ?CHILD(log_viewer_httpd, worker, [])
           ]
        }
     }.
