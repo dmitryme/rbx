@@ -1,0 +1,76 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+      <link rel="stylesheet" href="/static/style.css"/>
+      <script type="text/javascript" src="/static/jquery.js"></script>
+      <script type="text/javascript">
+      function get_types()
+      {
+         $.get("/get_types", function(data){
+            var types = jQuery.parseJSON(data).types;
+            $("#lv_type").remove();
+            $("#lv_types").text("Types:");
+            for(i = 0; i < types.length; i=i+1)
+            {
+               $("#lv_types").append($("<input type='checkbox'>").val(types[i]).attr("checked", true)).append(types[i]);
+            }
+         });
+      }
+      function get_selected_types()
+      {
+         var res ="[";
+         var len = $("#lv_types input").length;
+         $("#lv_types input").each(function(i, t){
+            if (t.checked == true)
+            {
+               res = res + t.value;
+            }
+            if (i != len - 1)
+            {
+               res += ",";
+            }
+         });
+         return res + "]";
+      }
+      function get_records(page, selTypes)
+      {
+         var grep = $("#lv_grep").val();
+         var recOnPage = $("#lv_rec_on_page").val();
+         var tuple = "{\"" + grep + "\"," + page + "," + recOnPage + "," + selTypes + "}.";
+         $.post("/get_records", tuple, function(res){
+            $('#lv_pages').append(JSON.stringify(jQuery.parseJSON(res)));
+         });
+      }
+      $(document).ready(function(){
+         get_types();
+         get_records("1", "all");
+      });
+      </script>
+   </head>
+   <body>
+      <p>
+         <label for="lv_max_records">Max records</label>
+         <select id="lv_max_records">
+            <option>100</option>
+            <option>500</option>
+            <option>1000</option>
+            <option>all</option>
+         </select>
+         <button id="lv_rescan">Rescan</button>
+      </p>
+      <p>
+         <label for="lv_grep">Grep</label>
+         <input id="lv_grep" type = "text">
+         <label for="lv_rec_on_page">Records on page</label>
+         <select id="lv_rec_on_page">
+            <option>30</option>
+            <option>50</option>
+            <option>100</option>
+         </select>
+         <button id="lv_apply">Apply</button>
+      </p>
+      <p id="lv_types"></p>
+      <p id="lv_pages"></p>
+      <table id="lv_records">
+   </body>
+</html>
