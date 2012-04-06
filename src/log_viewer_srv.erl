@@ -21,7 +21,7 @@
 -behaviour(gen_server).
 
 %% gen_server callbacks
--export([start_link/1, init/1, terminate/2, handle_call/3,
+-export([start/0, start/1, start_link/1, init/1, terminate/2, handle_call/3,
          handle_cast/2, handle_info/2, code_change/3]).
 
 -define(def_max, 100).
@@ -31,6 +31,12 @@
 %%-----------------------------------------------------------------
 %% Interface functions.
 %%-----------------------------------------------------------------
+start() -> start([]).
+start(Options) ->
+    supervisor:start_child(sasl_sup,
+         		   {log_viewer_srv, {log_viewer_srv, start_link, [Options]},
+			    temporary, brutal_kill, worker, [log_viewer_srv]}).
+
 start_link(Options) ->
    gen_server:start_link({local, log_viewer_srv}, ?MODULE, Options, []).
 
