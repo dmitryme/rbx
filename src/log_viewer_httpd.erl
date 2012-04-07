@@ -32,11 +32,11 @@ init(Options) ->
       {mime_types, [{"css", "text/css"}, {"js", "text/javascript"}, {"html", "text/html"}]}
    ]),
    link(Pid),
-   {ok, Css} = file:read_file("static/style.css"),
-   {ok, Index} = file:read_file("static/index.html"),
-   {ok, Reports} = file:read_file("static/reports.html"),
-   {ok, RDisplay} = file:read_file("static/rdisplay.html"),
-   {ok, JQuery} = file:read_file("static/jquery.js"),
+   {ok, Css} = file:read_file("www/style.css"),
+   {ok, Index} = file:read_file("www/index.html"),
+   {ok, Reports} = file:read_file("www/reports.html"),
+   {ok, RDisplay} = file:read_file("www/rdisplay.html"),
+   {ok, JQuery} = file:read_file("www/jquery.js"),
    {ok, #state{
          css = binary_to_list(Css),
          index = binary_to_list(Index),
@@ -76,16 +76,16 @@ code_change(_OldVsn, State, _Extra) ->
 do(#mod{request_uri = Uri})  when Uri == "/" ->
    Response = gen_server:call(log_viewer_httpd, get_index),
    {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/static/style.css" ->
+do(#mod{request_uri = Uri}) when Uri == "/www/style.css" ->
    Response = gen_server:call(log_viewer_httpd, get_css),
    {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/static/reports.html" ->
+do(#mod{request_uri = Uri}) when Uri == "/www/reports.html" ->
    Response = gen_server:call(log_viewer_httpd, get_reports),
    {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/static/rdisplay.html" ->
+do(#mod{request_uri = Uri}) when Uri == "/www/rdisplay.html" ->
    Response = gen_server:call(log_viewer_httpd, get_rdisplay),
    {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/static/jquery.js" ->
+do(#mod{request_uri = Uri}) when Uri == "/www/jquery.js" ->
    Response = gen_server:call(log_viewer_httpd, get_jquery),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri}) when Uri == "/get_types" ->
