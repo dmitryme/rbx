@@ -5,7 +5,7 @@
 -include_lib("inets/include/httpd.hrl").
 
 %% gen_server callbacks
--export([start/0, start/1, start_link/1, init/1, terminate/2, handle_call/3,
+-export([start/0, start/1, start_link/1, reload_static/0, init/1, terminate/2, handle_call/3,
          handle_cast/2, handle_info/2, code_change/3]).
 
 -export([do/1]).
@@ -20,6 +20,9 @@ start(Options) ->
 
 start_link(Options) ->
    gen_server:start_link({local, log_viewer_httpd}, ?MODULE, Options, []).
+
+reload_static() ->
+   gen_server:cast(log_viewer_httpd, reload_static).
 
 init(Options) ->
    inets:start(),
@@ -61,8 +64,11 @@ handle_call({get_records, Grep, Types}, _From, State) ->
    Records = log_viewer:list(Grep, Types),
    {reply, Records, State}.
 
+handle_cast({rescan, MaxRecords}, State) ->
+   log_viewer:rescan(MaxRecords),
+   {noreply, State};
 handle_cast(_Msg, State) ->
-   {norepy, State}.
+   {noreply, State}.
 
 terminate(_Reason, _) ->
    ok.
@@ -88,16 +94,13 @@ do(#mod{request_uri = Uri}) when Uri == "/www/rdisplay.html" ->
 do(#mod{request_uri = Uri}) when Uri == "/www/jquery.js" ->
    Response = gen_server:call(log_viewer_httpd, get_jquery),
    {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/get_types" ->
-   Types = gen_server:call(log_viewer_httpd, get_types),
-   Response = "{\"types\": " ++ list_to_json(Types, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end) ++ " }",
+do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/rescan" ->
+   Response = rescan(Query),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_records" ->
    Response = get_records(Query),
-   io:format("~p~n", [Response]),
    {proceed, [{response, {200, Response}}]};
 do(Mod) ->
-   %io:format("~p~n", [Mod]),
    {proceed, [{response, {404, "ERROR: Page " ++ Mod#mod.request_uri ++ " not found."}}]}.
 
 get_port(Options) ->
@@ -113,15 +116,23 @@ get_port(Options) ->
          Port
    end.
 
-get_records({Grep, Page, RecOnPage, Types}) ->
-   Records = gen_server:call(log_viewer_httpd, {get_records, Grep, Types}),
-   lists:concat(["{\"pages\":", get_pages(Records, RecOnPage), ',',
-                 "\"records\":", get_records(Records, Page, RecOnPage), '}']);
-get_records(Query) ->
-   io:format("~p~n", [Query]),
+rescan({Grep, RecOnPage, SelTypes, MaxRecords}) ->
+   gen_server:cast(log_viewer_httpd, {rescan, MaxRecords}),
+   get_records({Grep, 1, RecOnPage, SelTypes});
+rescan(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),
    {ok, Term} = erl_parse:parse_term(Tokens),
-   io:format("~p~n", [Term]),
+   rescan(Term).
+
+get_records({Grep, Page, RecOnPage, SelTypes}) ->
+   AllTypes = gen_server:call(log_viewer_httpd, get_types),
+   Records = gen_server:call(log_viewer_httpd, {get_records, Grep, SelTypes}),
+   lists:concat(["{\"types\":", list_to_json(AllTypes, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
+                 "\"pages\":", get_pages(Records, RecOnPage), ',',
+                 "\"records\":", get_records(Records, Page, RecOnPage), '}']);
+get_records(Query) ->
+   {ok, Tokens, _} = erl_scan:string(Query),
+   {ok, Term} = erl_parse:parse_term(Tokens),
    get_records(Term).
 
 get_records(Records, Page, RecOnPage) ->
@@ -144,7 +155,7 @@ get_pages(Records, RecOnPage, PageNum) ->
 
 record_to_json({No, RepType, Pid, Date}) ->
    lists:concat(["{\"no\":\"", No, "\",",
-   "\"type\":\"", RepType, "\",", 
+   "\"type\":\"", RepType, "\",",
    "\"pid\":\"", Pid, "\",",
    "\"date\":\"", Date, "\"}"]).
 

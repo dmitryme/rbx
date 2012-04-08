@@ -41,9 +41,18 @@
             $('#lv_pages').append(JSON.stringify(jQuery.parseJSON(res)));
          });
       }
+      function rescan(selTypes)
+      {
+         var maxRecords = $("#lv_max_records").val();
+         var grep = $("#lv_grep").val();
+         var recOnPage = $("#lv_rec_on_page").val();
+         var tuple = "{\"" + grep + "\"," + recOnPage + "," + selTypes + "," + maxRecords + "}.";
+         $.post("/rescan", tuple, function(res){
+            $('#lv_pages').append(JSON.stringify(jQuery.parseJSON(res)));
+         });
+      }
       $(document).ready(function(){
-         get_types();
-         get_records("1", "all");
+         rescan("all");
       });
       </script>
    </head>
