@@ -35,17 +35,20 @@ init(Options) ->
       {mime_types, [{"css", "text/css"}, {"js", "text/javascript"}, {"html", "text/html"}]}
    ]),
    link(Pid),
+   {ok, load_static(#state{})}.
+
+load_static(State) ->
    {ok, Css} = file:read_file("www/style.css"),
    {ok, Index} = file:read_file("www/index.html"),
    {ok, Reports} = file:read_file("www/reports.html"),
    {ok, RDisplay} = file:read_file("www/rdisplay.html"),
    {ok, JQuery} = file:read_file("www/jquery.js"),
-   {ok, #state{
-         css = binary_to_list(Css),
-         index = binary_to_list(Index),
-         reports = binary_to_list(Reports),
-         rdisplay = binary_to_list(RDisplay),
-         jquery = binary_to_list(JQuery)}}.
+   State#state{
+      css = binary_to_list(Css),
+      index = binary_to_list(Index),
+      reports = binary_to_list(Reports),
+      rdisplay = binary_to_list(RDisplay),
+      jquery = binary_to_list(JQuery)}.
 
 handle_call(get_css, _, State) ->
    {reply, State#state.css, State};
@@ -67,6 +70,8 @@ handle_call({get_records, Grep, Types}, _From, State) ->
 handle_cast({rescan, MaxRecords}, State) ->
    log_viewer:rescan(MaxRecords),
    {noreply, State};
+handle_cast(reload_static, State) ->
+   {noreply, load_static(State)};
 handle_cast(_Msg, State) ->
    {noreply, State}.
 
