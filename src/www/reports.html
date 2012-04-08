@@ -4,17 +4,28 @@
       <link rel="stylesheet" href="/www/style.css"/>
       <script type="text/javascript" src="/www/jquery.js"></script>
       <script type="text/javascript">
-      function get_types()
+      function apply_types(data, selTypes)
       {
-         $.get("/get_types", function(data){
-            var types = jQuery.parseJSON(data).types;
-            $("#lv_type").remove();
-            $("#lv_types").text("Types:");
-            for(i = 0; i < types.length; i=i+1)
-            {
-               $("#lv_types").append($("<input type='checkbox'>").val(types[i]).attr("checked", true)).append(types[i]);
-            }
+         $("#lv_types").children().remove();
+         $.each(data, function(i, type)
+         {
+            $("#lv_types").append($("<input type='checkbox'>").val(type).attr("checked", true));
+            $("#lv_types").append($("<label>").text(type));
          });
+      }
+      function apply_pages(pages, selPage)
+      {
+         $("#lv_pages").children().remove();
+         $.each(pages, function(i, page)
+         {
+            $("#lv_pages").append($("<a href=\"#\">").text(page).click(function(){get_records(page)}));
+            $("#lv_pages").append($("<label>&nbsp;</label>"));
+         });
+      }
+      function apply_records(records)
+      {
+         $('#lv_records').text("");
+         $('#lv_records').append(JSON.stringify(records));
       }
       function get_selected_types()
       {
@@ -33,14 +44,18 @@
          });
          return res + "]";
       }
-      function get_records(page, selTypes)
+      function get_records(page)
       {
          var grep = $("#lv_grep").val();
          var recOnPage = $("#lv_rec_on_page").val();
+         var selTypes = get_selected_types();
          var tuple = "{\"" + grep + "\"," + page + "," + recOnPage + "," + selTypes + "}.";
          $.post("/get_records", tuple, function(res)
          {
-            $('#lv_pages').append(JSON.stringify(jQuery.parseJSON(res)));
+            var data = jQuery.parseJSON(res);
+            apply_types(data.types, selTypes);
+            apply_pages(data.pages, "1");
+            apply_records(data.records);
          });
       }
       function rescan(selTypes)
@@ -51,17 +66,22 @@
          var tuple = "{\"" + grep + "\"," + recOnPage + "," + selTypes + "," + maxRecords + "}.";
          $.post("/rescan", tuple, function(res)
          {
-            //$('#lv_pages').append(JSON.stringify(jQuery.parseJSON(res)));
             var data = jQuery.parseJSON(res);
-            $.each(data.pages, function(i, page)
-            {
-               $("#lv_pages").append($("<a href=\"\">").text(page));
-               $("#lv_pages").append($("<label>&nbsp;</label>"));
-            });
+            apply_types(data.types, selTypes);
+            apply_pages(data.pages, "1");
+            apply_records(data.records);
          });
       }
       $(document).ready(function(){
          rescan("all");
+         $("#lv_rescan").click(function()
+         {
+            rescan(get_selected_types());
+         });
+         $("#lv_apply").click(function()
+         {
+            get_records("1");
+         });
       });
       </script>
    </head>
