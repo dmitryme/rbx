@@ -13,3 +13,132 @@ a, a:link, a:hover {
 a:hover {
    text-decoration: underline;
 }
+
+p.pages {
+}
+
+table.records {
+   font-family: "Lucida Grande","Segoe UI","Trebuchet MS",Tahoma,Helvetica,Arial,sans-serif;
+   font-size: 13px;
+   margin: 0px;
+   padding: 0px;
+   border-spacing: 0px;
+}
+
+table.rdisplay_header {
+   font-family: "Lucida Grande","Segoe UI","Trebuchet MS",Tahoma,Helvetica,Arial,sans-serif;
+   font-size: 13px;
+   width: 500px;
+   margin: 0px;
+   padding: 0px;
+   border-spacing: 0px;
+}
+
+table.rdisplay_data {
+   font-family: "Lucida Grande","Segoe UI","Trebuchet MS",Tahoma,Helvetica,Arial,sans-serif;
+   font-size: 13px;
+   width: 700px;
+   margin: 0px;
+   padding: 0px;
+   border-spacing: 0px;
+   background-color: #F1F1F1;
+}
+
+.records th.no_col{
+   width: 50px;
+   text-align: right;
+   background-color: #999797;
+}
+
+.records th.type_col{
+   width: 100px;
+   text-align: right;
+   background-color: #999797;
+}
+
+.records th.pid_col{
+   width: 100px;
+   text-align: right;
+   background-color: #999797;
+}
+
+.records th.date_col{
+   width: 130px;
+   text-align: center;
+   background-color: #999797;
+}
+
+.records td{
+   text-align: right;
+}
+
+.records tr:hover
+{
+   background-color: #F1F1F1;
+   cursor: pointer;
+}
+
+.records tr.error
+{
+   background-color: #FFDDDD;
+}
+
+.records tr.error:hover
+{
+   background-color: #F1F1F1;
+   cursor: pointer;
+}
+
+.records tr.warning
+{
+   background-color: #F9F8D0;
+}
+
+.records tr.warning:hover
+{
+   background-color: #F1F1F1;
+   cursor: pointer;
+}
+
+.records tr.progress {
+   background-color: #FFFFFF;
+}
+
+.records tr.progress:hover
+{
+   background-color: #F1F1F1;
+   cursor: pointer;
+}
+
+.records tr.info{
+   background-color: #FFFFFF;
+}
+
+.records tr.info:hover
+{
+   background-color: #F1F1F1;
+   cursor: pointer;
+}
+
+.rdisplay_header th {
+   border: none;
+   text-align: left;
+   vertical-align: top;
+}
+
+.rdisplay_header td {
+   text-align: left;
+   vertical-align: top;
+}
+
+.rdisplay_data td.item_key {
+   text-align: left;
+   vertical-align: top;
+   color: blue;
+   width: 150px;
+}
+
+.rdisplay_data td.item_value {
+   text-align: left;
+   vertical-align: top;
+}
