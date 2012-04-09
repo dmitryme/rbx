@@ -65,7 +65,10 @@ handle_call(get_types, _, State) ->
    {reply, log_viewer:get_types(), State};
 handle_call({get_records, Grep, Types}, _From, State) ->
    Records = log_viewer:list(Grep, Types),
-   {reply, Records, State}.
+   {reply, Records, State};
+handle_call({get_record, RecNum}, _From, State) ->
+   FmtRecord = record_formatter:format(log_viewer:show(RecNum)),
+   {reply, FmtRecord, State}.
 
 handle_cast({rescan, MaxRecords}, State) ->
    log_viewer:rescan(MaxRecords),
@@ -105,6 +108,9 @@ do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/rescan" ->
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_records" ->
    Response = get_records(Query),
    {proceed, [{response, {200, Response}}]};
+do(#mod{request_uri = Uri, entity_body = RecNum}) when Uri == "/get_record" ->
+   Response = get_record(list_to_integer(RecNum)),
+   {proceed, [{response, {200, Response}}]};
 do(Mod) ->
    {proceed, [{response, {404, "ERROR: Page " ++ Mod#mod.request_uri ++ " not found."}}]}.
 
@@ -141,8 +147,12 @@ get_records(Query) ->
    get_records(Term).
 
 get_records(Records, Page, RecOnPage) ->
-   PageRecords = lists:nthtail((Page - 1) * RecOnPage, Records),
+   StartFrom = lists:nthtail((Page - 1) * RecOnPage, Records),
+   PageRecords = lists:sublist(StartFrom, min(length(StartFrom), RecOnPage)),
    list_to_json(PageRecords, fun record_to_json/1).
+
+get_record(RecNum) ->
+   gen_server:call(log_viewer_httpd, {get_record, RecNum}).
 
 get_pages(Records, RecOnPage) ->
    case get_pages(Records, RecOnPage, 1) of
