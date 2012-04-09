@@ -4,9 +4,10 @@
       <link rel="stylesheet" href="/www/style.css"/>
       <script type="text/javascript" src="/www/jquery.js"></script>
       <script type="text/javascript">
-      function apply_types(data, selTypes)
+      function apply_types(data)
       {
          $("#lv_types").children().remove();
+         $("#lv_types").text("Types: ");
          $.each(data, function(i, type)
          {
             $("#lv_types").append($("<input type='checkbox'>").val(type).attr("checked", true));
@@ -18,14 +19,49 @@
          $("#lv_pages").children().remove();
          $.each(pages, function(i, page)
          {
-            $("#lv_pages").append($("<a href=\"#\">").text(page).click(function(){get_records(page)}));
+            if (selPage == page)
+            {
+               $("#lv_pages").append($("<label>" + page + "</label>"));
+            }
+            else
+            {
+               $("#lv_pages").append($("<a href=\"#\">" + page + "</a>").click(function(){get_records(page)}));
+            }
             $("#lv_pages").append($("<label>&nbsp;</label>"));
          });
       }
       function apply_records(records)
       {
-         $('#lv_records').text("");
-         $('#lv_records').append(JSON.stringify(records));
+         $("#lv_records").children().remove();
+         $("#lv_records").append("<tr><th class=\"no_col\">No</th><th class=\"type_col\">Type</th><th class=\"pid_col\">Pid</th><th class=\"date_col\">Date</th></tr>");
+         $.each(records, function(i, rec){
+            var recClass = "";
+            if (rec.type == "error" || rec.type == "error_report" || rec.type == "error_msg" || rec.type == "crash_report")
+            {
+               recClass = "error";
+            }
+            if (rec.type == rec.type == "warning" || rec.type == "warning_report" || rec.type == "warning_msg")
+            {
+               recClass = "warning";
+            }
+            else if (rec.type == "progress")
+            {
+               recClass = "progress";
+            }
+            else if (rec.type == "info" || rec.type == "info_report" || rec.type == "info_msg")
+            {
+               recClass = "info";
+            }
+            $("#lv_records").append($("<tr class=\"" + recClass + "\"><td>" + rec.no + "</td><td>" + rec.type + "</td><td>" + rec.pid + "</td><td>"
+                  + rec.date + "</td></tr>").click(function()
+            {
+               $.post("/get_record", rec.no, function(res){
+                  var body = $("body", top.frames[1].document);
+                  body.children().remove();
+                  body.append(res);
+               });
+            }));
+         });
       }
       function get_selected_types()
       {
@@ -35,11 +71,11 @@
          {
             if (t.checked == true)
             {
+               if (res != "[")
+               {
+                  res += ",";
+               }
                res = res + t.value;
-            }
-            if (i != len - 1)
-            {
-               res += ",";
             }
          });
          return res + "]";
@@ -53,21 +89,21 @@
          $.post("/get_records", tuple, function(res)
          {
             var data = jQuery.parseJSON(res);
-            apply_types(data.types, selTypes);
-            apply_pages(data.pages, "1");
+            //apply_types(data.types);
+            apply_pages(data.pages, page);
             apply_records(data.records);
          });
       }
-      function rescan(selTypes)
+      function rescan()
       {
          var maxRecords = $("#lv_max_records").val();
          var grep = $("#lv_grep").val();
          var recOnPage = $("#lv_rec_on_page").val();
-         var tuple = "{\"" + grep + "\"," + recOnPage + "," + selTypes + "," + maxRecords + "}.";
+         var tuple = "{\"" + grep + "\"," + recOnPage + ",all," + maxRecords + "}.";
          $.post("/rescan", tuple, function(res)
          {
             var data = jQuery.parseJSON(res);
-            apply_types(data.types, selTypes);
+            apply_types(data.types);
             apply_pages(data.pages, "1");
             apply_records(data.records);
          });
@@ -108,7 +144,7 @@
          <button id="lv_apply">Apply</button>
       </p>
       <p id="lv_types"></p>
-      <p id="lv_pages"></p>
-      <table id="lv_records">
+      <p class="pages" id="lv_pages"></p>
+      <table class="records" id="lv_records"/>
    </body>
 </html>
