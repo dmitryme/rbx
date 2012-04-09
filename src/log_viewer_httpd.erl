@@ -117,7 +117,7 @@ do(Mod) ->
 get_port(Options) ->
    case proplists:get_value(inets_port, Options) of
       undefined ->
-         case application:get_env(log_viewer, inets_port) of
+         case application:get_env(inets_port) of
             undefined ->
                8000;
             {ok, Val} ->
