@@ -1,0 +1,10 @@
+This is a web "replacement" of rb(report browser) based on httd + jQuery.
+
+How to start:
+application:start(log_viewer).
+
+and go http://localhost:8000 in you web browser
+
+http port can be configured via config file or
+
+erl -log_viewer inets_port 8001
