@@ -85,13 +85,19 @@ code_change(_OldVsn, State, _Extra) ->
 
 get_report_dir(Options) ->
    case lists:keysearch(report_dir, 1, Options) of
-      {value, {_Key, RptDir}} -> RptDir;
+      {value, {_Key, RptDir}} ->
+         RptDir;
       _ ->
-         case catch application:get_env(sasl, error_logger_mf_dir) of
+         case application:get_env(report_dir) of
+            undefined ->
+               case application:get_env(sasl, error_logger_mf_dir) of
+                  {ok, Dir} ->
+                     Dir;
+                  _ ->
+                     exit("cannot locate report directory")
+               end;
             {ok, Dir} ->
-               Dir;
-            _ ->
-               exit("cannot locate report directory")
+               Dir
          end
    end.
 
