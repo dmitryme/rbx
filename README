@@ -5,6 +5,7 @@ application:start(log_viewer).
 
 and go http://localhost:8000 in you web browser
 
-http port can be configured via config file or
-
-erl -log_viewer inets_port 8001
+Possible config parameters:
+- inets_port - http port can be configured via config file or "erl -log_viewer inets_port 8001"
+- report_dir - path to logs. If no parameter is found, looking to sasl error_logger_mf_dir param.
+               Can be configured the same way as inets_port. E.g. "erl -log_viewer report_dir "/tmp/log""
