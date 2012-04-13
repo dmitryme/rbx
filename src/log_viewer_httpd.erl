@@ -104,8 +104,10 @@ do(#mod{request_uri = Uri}) when Uri == "/www/jquery.js" ->
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/rescan" ->
    Response = rescan(Query),
+   io:format("~p~n", [Response]),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_records" ->
+   io:format("~p~n", [Query]),
    Response = get_records(Query),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = RecNum}) when Uri == "/get_record" ->
@@ -133,7 +135,7 @@ rescan(Query) when is_list(Query) ->
    rescan(Term);
 rescan({MaxRecords, RecOnPage, Filters}) ->
    gen_server:cast(log_viewer_httpd, {rescan, MaxRecords}),
-   get_records({get_records, Filters, 1, RecOnPage}).
+   get_records({Filters, 1, RecOnPage}).
 
 get_records(Query) when is_list(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),
@@ -144,7 +146,7 @@ get_records({Filters, Page, RecOnPage}) ->
    Records = gen_server:call(log_viewer_httpd, {get_records, Filters}),
    lists:concat(["{\"types\":", list_to_json(AllTypes, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
                  "\"pages\":", get_pages(Records, RecOnPage), ',',
-                 "\"records\":", get_records(Records, Page, RecOnPage), '}']);
+                 "\"records\":", get_records(Records, Page, RecOnPage), '}']).
 get_records(Records, Page, RecOnPage) ->
    StartFrom = lists:nthtail((Page - 1) * RecOnPage, Records),
    PageRecords = lists:sublist(StartFrom, min(length(StartFrom), RecOnPage)),
