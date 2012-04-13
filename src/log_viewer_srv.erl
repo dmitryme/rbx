@@ -320,7 +320,7 @@ print_list(Types, Dir, [Report = {_, RealType, _, Date, _, _}|Tail], Filters) ->
    SelTypes = proplists:get_value(types, Filters, Types),
    case lists:member(RealType, SelTypes) of
       true ->
-         Interval = proplists:get_value(interval, Filters),
+         Interval = proplists:get_value(datetime, Filters),
          case compare_dates(Date, Interval) of
             true ->
                RegExp = proplists:get_value(reg_exp, Filters, ""),

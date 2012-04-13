@@ -104,10 +104,8 @@ do(#mod{request_uri = Uri}) when Uri == "/www/jquery.js" ->
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/rescan" ->
    Response = rescan(Query),
-   io:format("~p~n", [Response]),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_records" ->
-   io:format("~p~n", [Query]),
    Response = get_records(Query),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = RecNum}) when Uri == "/get_record" ->

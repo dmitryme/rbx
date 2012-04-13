@@ -3,9 +3,9 @@
 -type rec_type() :: atom().
 -type filter() :: {'types', [rec_type()]} |
                   {'reg_exp', string()} |
-                  {'interval', {calendar:datetime(), calendar:datetime()}} |
-                  {'interval', {calendar:datetime(), from}} |
-                  {'interval', {calendar:datetime(), to}}.
+                  {'datetime', {calendar:datetime(), calendar:datetime()}} |
+                  {'datetime', {calendar:datetime(), from}} |
+                  {'datetime', {calendar:datetime(), to}}.
 -type filters() :: [filter()].
 -type list_result() :: list() | {'error', term()}.
 
