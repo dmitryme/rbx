@@ -63,8 +63,8 @@ handle_call(get_jquery, _, State) ->
    {reply, State#state.jquery, State};
 handle_call(get_types, _, State) ->
    {reply, log_viewer:get_types(), State};
-handle_call({get_records, Grep, Types}, _From, State) ->
-   Records = log_viewer:list(Grep, Types),
+handle_call({get_records, Filters}, _From, State) ->
+   Records = log_viewer:list(Filters),
    {reply, Records, State};
 handle_call({get_record, RecNum}, _From, State) ->
    FmtRecord = record_formatter:format(log_viewer:show(RecNum)),
@@ -127,25 +127,24 @@ get_port(Options) ->
          Port
    end.
 
-rescan({Grep, RecOnPage, SelTypes, MaxRecords}) ->
-   gen_server:cast(log_viewer_httpd, {rescan, MaxRecords}),
-   get_records({Grep, 1, RecOnPage, SelTypes});
-rescan(Query) ->
+rescan(Query) when is_list(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),
    {ok, Term} = erl_parse:parse_term(Tokens),
-   rescan(Term).
+   rescan(Term);
+rescan({MaxRecords, RecOnPage, Filters}) ->
+   gen_server:cast(log_viewer_httpd, {rescan, MaxRecords}),
+   get_records({get_records, Filters, 1, RecOnPage}).
 
-get_records({Grep, Page, RecOnPage, SelTypes}) ->
+get_records(Query) when is_list(Query) ->
+   {ok, Tokens, _} = erl_scan:string(Query),
+   {ok, Term} = erl_parse:parse_term(Tokens),
+   get_records(Term);
+get_records({Filters, Page, RecOnPage}) ->
    AllTypes = gen_server:call(log_viewer_httpd, get_types),
-   Records = gen_server:call(log_viewer_httpd, {get_records, Grep, SelTypes}),
+   Records = gen_server:call(log_viewer_httpd, {get_records, Filters}),
    lists:concat(["{\"types\":", list_to_json(AllTypes, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
                  "\"pages\":", get_pages(Records, RecOnPage), ',',
                  "\"records\":", get_records(Records, Page, RecOnPage), '}']);
-get_records(Query) ->
-   {ok, Tokens, _} = erl_scan:string(Query),
-   {ok, Term} = erl_parse:parse_term(Tokens),
-   get_records(Term).
-
 get_records(Records, Page, RecOnPage) ->
    StartFrom = lists:nthtail((Page - 1) * RecOnPage, Records),
    PageRecords = lists:sublist(StartFrom, min(length(StartFrom), RecOnPage)),
@@ -172,7 +171,7 @@ record_to_json({No, RepType, Pid, Date}) ->
    lists:concat(["{\"no\":\"", No, "\",",
    "\"type\":\"", RepType, "\",",
    "\"pid\":\"", Pid, "\",",
-   "\"date\":\"", Date, "\"}"]).
+   "\"date\":\"", common_utils:date_to_str(Date, true), "\"}"]).
 
 list_to_json(List, Fun) ->
    list_to_json(List, Fun, "[").
