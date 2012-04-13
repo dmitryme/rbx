@@ -54,10 +54,8 @@ handle_call(get_types, _From, State) ->
    {reply, State#state.types, State};
 handle_call(_, _From, #state{data = undefined}) ->
    {reply, {error, no_data}, #state{}};
-handle_call({list, RegExp, all}, From, State) ->
-   handle_call({list, RegExp, State#state.types}, From, State);
-handle_call({list, RegExp, Types}, _From, State) ->
-   try print_list(State#state.dir, State#state.data, Types, RegExp) of
+handle_call({list, Filters}, _From, State) ->
+   try print_list(State#state.types, State#state.dir, State#state.data, Filters) of
       Res ->
          {reply, Res, State}
    catch
@@ -302,7 +300,7 @@ get_short_descr({Date, {error_report, Pid, {_, crash_report, Rep}}}) ->
       _ -> Pid
    end,
    NameStr = lists:flatten(io_lib:format("~w", [Name])),
-   {NameStr, common_utils:date_to_str(Date, true)};
+   {NameStr, Date};
 get_short_descr({Date, {error_report, Pid, {_, supervisor_report,Rep}}}) ->
    Name =
           case lists:keysearch(supervisor, 1, Rep) of
@@ -310,25 +308,33 @@ get_short_descr({Date, {error_report, Pid, {_, supervisor_report,Rep}}}) ->
       _ -> Pid
    end,
    NameStr = lists:flatten(io_lib:format("~w", [Name])),
-   {NameStr, common_utils:date_to_str(Date, true)};
+   {NameStr, Date};
 get_short_descr({Date, {_Type, Pid, _}}) ->
    NameStr = lists:flatten(io_lib:format("~w", [Pid])),
-   {NameStr, common_utils:date_to_str(Date, true)};
+   {NameStr, Date};
 get_short_descr(_) ->
    {"???", "???"}.
 
-print_list(_, [], _, _) -> [];
-print_list(Dir, [Report = {_, RealType, _, _, _, _}|Tail], Types, RegExp) ->
-   case lists:member(RealType, Types) of
+print_list(_, _, [], _) -> [];
+print_list(Types, Dir, [Report = {_, RealType, _, Date, _, _}|Tail], Filters) ->
+   SelTypes = proplists:get_value(types, Filters, Types),
+   case lists:member(RealType, SelTypes) of
       true ->
-         case check_grep_report(Dir, Report, RegExp) of
-            match ->
-               [print_short_descr(Report) | print_list(Dir, Tail, Types, RegExp)];
-            nomatch ->
-               print_list(Dir, Tail, Types, RegExp)
+         Interval = proplists:get_value(interval, Filters),
+         case compare_dates(Date, Interval) of
+            true ->
+               RegExp = proplists:get_value(reg_exp, Filters, ""),
+               case check_grep_report(Dir, Report, RegExp) of
+                  match ->
+                     [print_short_descr(Report) | print_list(Types, Dir, Tail, Filters)];
+                  nomatch ->
+                     print_list(Types, Dir, Tail, Filters)
+               end;
+            false ->
+               print_list(Types, Dir, Tail, Filters)
          end;
       false ->
-         print_list(Dir, Tail, Types, RegExp)
+         print_list(Types, Dir, Tail, Filters)
    end.
 
 print_short_descr({No, Type, ShortDescr, Date, _, _}) ->
@@ -357,6 +363,37 @@ find_report([_H|T], No) ->
    find_report(T, No);
 find_report([], No) ->
    throw({error, list:flatten(io_lib:format("there is no report with number ~p.~n", [No]))}).
+
+get_compare_dates(Date, CompareDate) ->
+    case application:get_env(sasl, utc_log) of
+	{ok, true} ->
+	    {common_utils:local_time_to_universal_time(Date),
+	     common_utils:local_time_to_universal_time(CompareDate)};
+	_ ->
+	    {Date, CompareDate}
+    end.
+get_compare_dates(Date, From, To) ->
+    case application:get_env(sasl, utc_log) of
+	{ok, true} ->
+	    {common_utils:local_time_to_universal_time(Date),
+	     common_utils:local_time_to_universal_time(From),
+	     common_utils:local_time_to_universal_time(To)};
+	_ ->
+	    {Date, From, To}
+    end.
+
+compare_dates(_Date, undefined) ->
+   true;
+compare_dates(Date, {CompareDate, from}) ->
+   {Date2, DateFrom} = get_compare_dates(Date, CompareDate),
+   calendar:datetime_to_gregorian_seconds(Date2) >= calendar:datetime_to_gregorian_seconds(DateFrom);
+compare_dates(Date, {CompareDate, to}) ->
+   {Date2, DateTo} = get_compare_dates(Date, CompareDate),
+   calendar:datetime_to_gregorian_seconds(Date2) =< calendar:datetime_to_gregorian_seconds(DateTo);
+compare_dates(Date, {From, To}) ->
+   {Date2, DateFrom, DateTo} = get_compare_dates(Date, From, To),
+   calendar:datetime_to_gregorian_seconds(Date2) >= calendar:datetime_to_gregorian_seconds(DateFrom) andalso
+   calendar:datetime_to_gregorian_seconds(Date2) =< calendar:datetime_to_gregorian_seconds(DateTo).
 
 check_grep_report(_Dir, _Report, []) ->
    match;
