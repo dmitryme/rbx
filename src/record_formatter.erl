@@ -97,7 +97,7 @@ print_info(Header, Report) ->
 print_report([]) ->
    [];
 print_report({text, Text}) ->
-   "<tr><td colspan='2'>" ++ Text ++ "</td></tr>";
+   "<tr><td colspan='2'>" ++ replace_to_html_entities(Text) ++ "</td></tr>";
 print_report([{data, Data}|T]) ->
    [print_data(Data), print_report(T)];
 print_report([{table, Table}|T]) ->

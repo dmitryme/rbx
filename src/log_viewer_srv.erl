@@ -59,16 +59,20 @@ handle_call({list, Filters}, _From, State) ->
       Res ->
          {reply, Res, State}
    catch
-      throw:Error ->
-         {reply, Error, State}
+      _:Error ->
+         error_logger:error_msg(
+            "log_viewer_srv::list call failed: ~p~n", [erlang:get_stacktrace()]),
+         {reply, {error, Error}, State}
    end;
 handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}) ->
    try print_report_by_num(Dir, Data, Number) of
       Res ->
          {reply, Res, State}
    catch
-      throw:Error ->
-         {reply, Error, State}
+      _:Error ->
+         error_logger:error_msg(
+            "log_viewer_srv::show_number call failed: ~p~n", [erlang:get_stacktrace()]),
+         {reply, {error, Error}, State}
    end.
 
 terminate(_Reason, #state{}) ->
@@ -255,13 +259,13 @@ read_report(Fd) ->
          Size = get_int16(Hi,Lo),
          case io:get_chars(Fd,'',Size) of
             eof ->
-               throw({error,"Premature end of file"});
+               throw("Premature end of file");
             List ->
                Bin = list_to_binary(List),
                Ref = make_ref(),
                case (catch {Ref,binary_to_term(Bin)}) of
                   {'EXIT',_} ->
-                     throw({error, "Incomplete erlang term in log"});
+                     throw("Incomplete erlang term in log");
                   {Ref,Term} ->
                      {ok, Term}
                end
@@ -351,7 +355,7 @@ print_report(Dir, Data, Number) ->
             {ok, Fd} ->
                read_rep(Fd, FilePosition);
             _ ->
-               throw({error, list:flatten(io_lib:format("can't open file ~p~n", [Fname]))})
+               throw(list:flatten(io_lib:format("can't open file ~p~n", [Fname])))
          end;
       no_report ->
          {error, not_found}
@@ -362,7 +366,7 @@ find_report([{No, _Type, _Descr, _Date, Fname, FilePosition}|_T], No) ->
 find_report([_H|T], No) ->
    find_report(T, No);
 find_report([], No) ->
-   throw({error, list:flatten(io_lib:format("there is no report with number ~p.~n", [No]))}).
+   throw(list:flatten(io_lib:format("there is no report with number ~p.~n", [No]))).
 
 get_compare_dates(Date, CompareDate) ->
     case application:get_env(sasl, utc_log) of
@@ -384,10 +388,10 @@ get_compare_dates(Date, From, To) ->
 
 compare_dates(_Date, undefined) ->
    true;
-compare_dates(Date, {CompareDate, from}) ->
+compare_dates(Date, {from, CompareDate}) ->
    {Date2, DateFrom} = get_compare_dates(Date, CompareDate),
    calendar:datetime_to_gregorian_seconds(Date2) >= calendar:datetime_to_gregorian_seconds(DateFrom);
-compare_dates(Date, {CompareDate, to}) ->
+compare_dates(Date, {to, CompareDate}) ->
    {Date2, DateTo} = get_compare_dates(Date, CompareDate),
    calendar:datetime_to_gregorian_seconds(Date2) =< calendar:datetime_to_gregorian_seconds(DateTo);
 compare_dates(Date, {From, To}) ->
@@ -403,7 +407,7 @@ check_grep_report(Dir, {_No, _Type, _Descr, _Date, Fname, FilePosition}, RegExp)
       {ok, Fd} when is_pid(Fd) ->
          check_rep(Fd, FilePosition, RegExp);
       _ ->
-         throw({error, lists:flatten(io_lib:format("can't open file ~p~n", [Fname]))})
+         throw(lists:flatten(io_lib:format("can't open file ~p~n", [Fname])))
    end.
 
 check_rep(Fd, FilePosition, RegExp) ->

@@ -4,8 +4,8 @@
 -type filter() :: {'types', [rec_type()]} |
                   {'reg_exp', string()} |
                   {'datetime', {calendar:datetime(), calendar:datetime()}} |
-                  {'datetime', {calendar:datetime(), from}} |
-                  {'datetime', {calendar:datetime(), to}}.
+                  {'datetime', {from, calendar:datetime()}} |
+                  {'datetime', {to, calendar:datetime()}}.
 -type filters() :: [filter()].
 -type list_result() :: list() | {'error', term()}.
 
