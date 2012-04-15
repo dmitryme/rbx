@@ -24,12 +24,49 @@
 -export([start/0, start/1, start_link/1, init/1, terminate/2, handle_call/3,
          handle_cast/2, handle_info/2, code_change/3]).
 
+-export([list/0, list/1, rescan/1, show/1, get_types/0]).
+
 -define(def_max, 100).
 
 -record(state, {dir, data, device, max = ?def_max, types, log}).
 
+-type rec_type() :: atom().
+-type filter() :: {'types', [rec_type()]} |
+                  {'reg_exp', string()} |
+                  {'datetime', {calendar:datetime(), calendar:datetime()}} |
+                  {'datetime', {from, calendar:datetime()}} |
+                  {'datetime', {to, calendar:datetime()}}.
+-type filters() :: [filter()].
+-type list_result() :: list() | {'error', term()}.
+
 %%-----------------------------------------------------------------
-%% Interface functions.
+%% pulic interface.
+%%-----------------------------------------------------------------
+-spec list() -> list_result().
+list() ->
+   list([]).
+
+-spec list(filters()) -> list_result().
+list(Filter)
+      when is_list(Filter) =/= true ->
+   {error, wrong_args};
+list(Filter) ->
+   gen_server:call(log_viewer_srv, {list, Filter}, infinity).
+
+-spec rescan(pos_integer()) -> filters() | {'error', term()}.
+rescan(Max) ->
+   gen_server:call(log_viewer_srv, {rescan, Max}, infinity).
+
+-spec show(all | pos_integer()) -> term().
+show(Number) when is_integer(Number) ->
+   gen_server:call(log_viewer_srv, {show_number, Number}, infinity).
+
+-spec get_types() -> filters() | {'error', term()}.
+get_types() ->
+   gen_server:call(log_viewer_srv, get_types, infinity).
+
+%%-----------------------------------------------------------------
+%% gen_server interface functions.
 %%-----------------------------------------------------------------
 start() -> start([]).
 start(Options) ->
