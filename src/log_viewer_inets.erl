@@ -1,28 +1,23 @@
--module(log_viewer_httpd).
+-module(log_viewer_inets).
 
 -behaviour(gen_server).
 
 -include_lib("inets/include/httpd.hrl").
 
 %% gen_server callbacks
--export([start/0, start/1, start_link/1, reload_static/0, init/1, terminate/2, handle_call/3,
+-export([start/0, start/1, start_link/1, init/1, terminate/2, handle_call/3,
          handle_cast/2, handle_info/2, code_change/3]).
 
 -export([do/1]).
 
--record(state, {css, index, reports, rdisplay, jquery}).
-
 start() -> start([]).
 start(Options) ->
     supervisor:start_child(sasl_sup,
-           	   {log_viewer_httpd, {log_viewer_https, start_link, [Options]},
-			    temporary, brutal_kill, worker, [log_viewer_httpd]}).
+           	   {log_viewer_inets, {log_viewer_inets, start_link, [Options]},
+			    temporary, brutal_kill, worker, [log_viewer_inets]}).
 
 start_link(Options) ->
-   gen_server:start_link({local, log_viewer_httpd}, ?MODULE, Options, []).
-
-reload_static() ->
-   gen_server:cast(log_viewer_httpd, reload_static).
+   gen_server:start_link({local, log_viewer_inets}, ?MODULE, Options, []).
 
 init(Options) ->
    inets:start(),
@@ -35,46 +30,20 @@ init(Options) ->
       {mime_types, [{"css", "text/css"}, {"js", "text/javascript"}, {"html", "text/html"}]}
    ]),
    link(Pid),
-   {ok, load_static(#state{})}.
+   {ok, undef}.
 
-load_static(State) ->
-   {ok, Css} = file:read_file("www/style.css"),
-   {ok, Index} = file:read_file("www/index.html"),
-   {ok, Reports} = file:read_file("www/reports.html"),
-   {ok, RDisplay} = file:read_file("www/rdisplay.html"),
-   {ok, JQuery} = file:read_file("www/jquery.js"),
-   State#state{
-      css = binary_to_list(Css),
-      index = binary_to_list(Index),
-      reports = binary_to_list(Reports),
-      rdisplay = binary_to_list(RDisplay),
-      jquery = binary_to_list(JQuery)}.
-
-handle_call(get_css, _, State) ->
-   {reply, State#state.css, State};
-handle_call(get_index, _, State) ->
-   Res = lists:flatten(io_lib:format(State#state.index, [node()])),
-   {reply, Res, State};
-handle_call(get_reports, _, State) ->
-   {reply, State#state.reports, State};
-handle_call(get_rdisplay, _, State) ->
-   {reply, State#state.rdisplay, State};
-handle_call(get_jquery, _, State) ->
-   {reply, State#state.jquery, State};
 handle_call(get_types, _, State) ->
-   {reply, log_viewer:get_types(), State};
+   {reply, log_viewer_srv:get_types(), State};
 handle_call({get_records, Filters}, _From, State) ->
-   Records = log_viewer:list(Filters),
+   Records = log_viewer_srv:list(Filters),
    {reply, Records, State};
 handle_call({get_record, RecNum}, _From, State) ->
-   FmtRecord = record_formatter:format(log_viewer:show(RecNum)),
+   FmtRecord = record_formatter_html:format(log_viewer_srv:show(RecNum)),
    {reply, FmtRecord, State}.
 
 handle_cast({rescan, MaxRecords}, State) ->
-   log_viewer:rescan(MaxRecords),
+   log_viewer_srv:rescan(MaxRecords),
    {noreply, State};
-handle_cast(reload_static, State) ->
-   {noreply, load_static(State)};
 handle_cast(_Msg, State) ->
    {noreply, State}.
 
@@ -87,21 +56,6 @@ handle_info(_Info, State) ->
 code_change(_OldVsn, State, _Extra) ->
    {ok, State}.
 
-do(#mod{request_uri = Uri})  when Uri == "/" ->
-   Response = gen_server:call(log_viewer_httpd, get_index),
-   {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/www/style.css" ->
-   Response = gen_server:call(log_viewer_httpd, get_css),
-   {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/www/reports.html" ->
-   Response = gen_server:call(log_viewer_httpd, get_reports),
-   {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/www/rdisplay.html" ->
-   Response = gen_server:call(log_viewer_httpd, get_rdisplay),
-   {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri}) when Uri == "/www/jquery.js" ->
-   Response = gen_server:call(log_viewer_httpd, get_jquery),
-   {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/rescan" ->
    Response = rescan(Query),
    {proceed, [{response, {200, Response}}]};
@@ -111,8 +65,19 @@ do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_records" ->
 do(#mod{request_uri = Uri, entity_body = RecNum}) when Uri == "/get_record" ->
    Response = get_record(list_to_integer(RecNum)),
    {proceed, [{response, {200, Response}}]};
-do(Mod) ->
-   {proceed, [{response, {404, "ERROR: Page " ++ Mod#mod.request_uri ++ " not found."}}]}.
+do(#mod{request_uri = Uri})  when Uri == "/" ->
+   {ok, Bin} = file:read_file("/www/index.html"),
+   {proceed, [{response, {200, binary_to_list(Bin)}}]};
+do(#mod{request_uri = Uri})  when Uri == "/favicon.ico" ->
+   {proceed, [{response, {404, ""}}]};
+do(#mod{request_uri = Uri}) ->
+   case file:read_file(Uri) of
+      {ok, Bin} ->
+         {proceed, [{response, {200, binary_to_list(Bin)}}]};
+      {error, Reason} ->
+         error_logger:error_msg("Unable to read file '~s'. Reason = ~p~n", [Uri, Reason]),
+         {proceed, [{response, {404, "ERROR: Page " ++ Uri ++ " not found."}}]}
+   end.
 
 get_port(Options) ->
    case proplists:get_value(inets_port, Options) of
@@ -132,7 +97,7 @@ rescan(Query) when is_list(Query) ->
    {ok, Term} = erl_parse:parse_term(Tokens),
    rescan(Term);
 rescan({MaxRecords, RecOnPage, Filters}) ->
-   gen_server:cast(log_viewer_httpd, {rescan, MaxRecords}),
+   gen_server:cast(log_viewer_inets, {rescan, MaxRecords}),
    get_records({Filters, 1, RecOnPage}).
 
 get_records(Query) when is_list(Query) ->
@@ -140,8 +105,8 @@ get_records(Query) when is_list(Query) ->
    {ok, Term} = erl_parse:parse_term(Tokens),
    get_records(Term);
 get_records({Filters, Page, RecOnPage}) ->
-   AllTypes = gen_server:call(log_viewer_httpd, get_types),
-   Records = gen_server:call(log_viewer_httpd, {get_records, Filters}),
+   AllTypes = gen_server:call(log_viewer_inets, get_types),
+   Records = gen_server:call(log_viewer_inets, {get_records, Filters}),
    lists:concat(["{\"types\":", list_to_json(AllTypes, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
                  "\"pages\":", get_pages(Records, RecOnPage), ',',
                  "\"records\":", get_records(Records, Page, RecOnPage), '}']).
@@ -151,7 +116,7 @@ get_records(Records, Page, RecOnPage) ->
    list_to_json(PageRecords, fun record_to_json/1).
 
 get_record(RecNum) ->
-   gen_server:call(log_viewer_httpd, {get_record, RecNum}).
+   gen_server:call(log_viewer_inets, {get_record, RecNum}).
 
 get_pages(Records, RecOnPage) ->
    case get_pages(Records, RecOnPage, 1) of

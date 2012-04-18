@@ -1,22 +1,4 @@
-%%
-%% %CopyrightBegin%
-%%
-%% Copyright Ericsson AB 1996-2009. All Rights Reserved.
-%%
-%% The contents of this file are subject to the Erlang Public License,
-%% Version 1.1, (the "License"); you may not use this file except in
-%% compliance with the License. You should have received a copy of the
-%% Erlang Public License along with this software. If not, it can be
-%% retrieved online at http://www.erlang.org/.
-%%
-%% Software distributed under the License is distributed on an "AS IS"
-%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
-%% the License for the specific language governing rights and limitations
-%% under the License.
-%%
-%% %CopyrightEnd%
-%%
--module(record_formatter).
+-module(record_formatter_html).
 
 %% intermodule exports
 -export([format/1]).
@@ -62,10 +44,10 @@ format_neighbours([]) -> [].
 %% Supervisor report
 %%-----------------------------------------------------------------
 format_s(Data) ->
-   SuperName = get_opt(supervisor, Data),
-   ErrorContext = get_opt(errorContext, Data),
-   Reason = get_opt(reason, Data),
-   ChildInfo = get_opt(offender, Data),
+   SuperName = proplists:get_value(supervisor, Data),
+   ErrorContext = proplists:get_value(errorContext, Data),
+   Reason = proplists:get_value(reason, Data),
+   ChildInfo = proplists:get_value(offender, Data),
    [{data, [{"Reporting supervisor", SuperName}]},
     {newline, 1},
     {items, {"Child process",
@@ -82,14 +64,6 @@ transform_mfa(X) ->
 %%-----------------------------------------------------------------
 format_p(Data) ->
    [{data, Data}].
-
-get_opt(Key, List) ->
-   case lists:keysearch(Key, 1, List) of
-     {value, {_Key, Val}} ->
-         Val;
-	   _ ->
-         undefined
-   end.
 
 print_info(Header, Report) ->
    "<table class='rdisplay_header'>" ++ Header ++ "</table><br/><table class='rdisplay_data'>" ++ print_report(Report) ++ "</table>".
