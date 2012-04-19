@@ -10,6 +10,8 @@
 
 -export([do/1]).
 
+-record(state, {document_root}).
+
 start() -> start([]).
 start(Options) ->
     supervisor:start_child(sasl_sup,
@@ -21,16 +23,17 @@ start_link(Options) ->
 
 init(Options) ->
    inets:start(),
+   DocRoot = filename:nativename(get_option(document_root, Options, ".")),
    {ok, Pid} = inets:start(httpd, [
-      {port, get_port(Options)},
+      {port, get_option(inets_port, Options, 8000)},
       {server_name, "log_viewer"},
       {server_root, "."},
-      {document_root, "."},
+      {document_root, DocRoot},
       {modules, [?MODULE]},
       {mime_types, [{"css", "text/css"}, {"js", "text/javascript"}, {"html", "text/html"}]}
    ]),
    link(Pid),
-   {ok, undef}.
+   {ok, #state{document_root = DocRoot}}.
 
 handle_call(get_types, _, State) ->
    {reply, log_viewer_srv:get_types(), State};
@@ -39,7 +42,9 @@ handle_call({get_records, Filters}, _From, State) ->
    {reply, Records, State};
 handle_call({get_record, RecNum}, _From, State) ->
    FmtRecord = record_formatter_html:format(log_viewer_srv:show(RecNum)),
-   {reply, FmtRecord, State}.
+   {reply, FmtRecord, State};
+handle_call(get_doc_root, _From, State) ->
+   {reply, State#state.document_root, State}.
 
 handle_cast({rescan, MaxRecords}, State) ->
    log_viewer_srv:rescan(MaxRecords),
@@ -66,12 +71,12 @@ do(#mod{request_uri = Uri, entity_body = RecNum}) when Uri == "/get_record" ->
    Response = get_record(list_to_integer(RecNum)),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri})  when Uri == "/" ->
-   {ok, Bin} = file:read_file("/www/index.html"),
+   {ok, Bin} = file:read_file(get_doc_root() ++ "/www/index.html"),
    {proceed, [{response, {200, binary_to_list(Bin)}}]};
 do(#mod{request_uri = Uri})  when Uri == "/favicon.ico" ->
    {proceed, [{response, {404, ""}}]};
 do(#mod{request_uri = Uri}) ->
-   case file:read_file(Uri) of
+   case file:read_file(get_doc_root() ++ Uri) of
       {ok, Bin} ->
          {proceed, [{response, {200, binary_to_list(Bin)}}]};
       {error, Reason} ->
@@ -79,17 +84,25 @@ do(#mod{request_uri = Uri}) ->
          {proceed, [{response, {404, "ERROR: Page " ++ Uri ++ " not found."}}]}
    end.
 
-get_port(Options) ->
-   case proplists:get_value(inets_port, Options) of
+
+%%=============================================================
+%% utils
+%%=============================================================
+
+get_doc_root() ->
+   gen_server:call(log_viewer_inets, get_doc_root).
+
+get_option(OpName, Options, Default) ->
+   case proplists:get_value(OpName, Options) of
       undefined ->
-         case application:get_env(inets_port) of
+         case application:get_env(OpName) of
             undefined ->
-               8000;
+               Default;
             {ok, Val} ->
                Val
          end;
-      Port ->
-         Port
+      Value ->
+         Value
    end.
 
 rescan(Query) when is_list(Query) ->
