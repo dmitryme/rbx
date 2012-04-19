@@ -28,7 +28,7 @@ init([]) ->
        {
           {one_for_one, 5, 10},
           [
-             ?CHILD(log_viewer_srv, worker, []),
+             ?CHILD(log_viewer, worker, []),
              ?CHILD(log_viewer_inets, worker, []),
              ?CHILD(log_viewer_cons, worker, [])
           ]

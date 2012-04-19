@@ -36,18 +36,18 @@ init(Options) ->
    {ok, #state{document_root = DocRoot}}.
 
 handle_call(get_types, _, State) ->
-   {reply, log_viewer_srv:get_types(), State};
+   {reply, log_viewer:get_types(), State};
 handle_call({get_records, Filters}, _From, State) ->
-   Records = log_viewer_srv:list(Filters),
+   Records = log_viewer:list(Filters),
    {reply, Records, State};
 handle_call({get_record, RecNum}, _From, State) ->
-   FmtRecord = record_formatter_html:format(log_viewer_srv:show(RecNum)),
+   FmtRecord = record_formatter_html:format(log_viewer:show(RecNum)),
    {reply, FmtRecord, State};
 handle_call(get_doc_root, _From, State) ->
    {reply, State#state.document_root, State}.
 
 handle_cast({rescan, MaxRecords}, State) ->
-   log_viewer_srv:rescan(MaxRecords),
+   log_viewer:rescan(MaxRecords),
    {noreply, State};
 handle_cast(_Msg, State) ->
    {noreply, State}.

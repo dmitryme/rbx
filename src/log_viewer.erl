@@ -16,7 +16,7 @@
 %%
 %% %CopyrightEnd%
 %%
--module(log_viewer_srv).
+-module(log_viewer).
 
 -behaviour(gen_server).
 
@@ -51,19 +51,19 @@ list(Filter)
       when is_list(Filter) =/= true ->
    {error, wrong_args};
 list(Filter) ->
-   gen_server:call(log_viewer_srv, {list, Filter}, infinity).
+   gen_server:call(log_viewer, {list, Filter}, infinity).
 
 -spec rescan(pos_integer()) -> filters() | {'error', term()}.
 rescan(Max) ->
-   gen_server:call(log_viewer_srv, {rescan, Max}, infinity).
+   gen_server:call(log_viewer, {rescan, Max}, infinity).
 
 -spec show(all | pos_integer()) -> term().
 show(Number) when is_integer(Number) ->
-   gen_server:call(log_viewer_srv, {show_number, Number}, infinity).
+   gen_server:call(log_viewer, {show_number, Number}, infinity).
 
 -spec get_types() -> filters() | {'error', term()}.
 get_types() ->
-   gen_server:call(log_viewer_srv, get_types, infinity).
+   gen_server:call(log_viewer, get_types, infinity).
 
 %%-----------------------------------------------------------------
 %% gen_server interface functions.
@@ -71,11 +71,11 @@ get_types() ->
 start() -> start([]).
 start(Options) ->
     supervisor:start_child(sasl_sup,
-         		   {log_viewer_srv, {log_viewer_srv, start_link, [Options]},
-			    temporary, brutal_kill, worker, [log_viewer_srv]}).
+         		   {log_viewer, {log_viewer, start_link, [Options]},
+			    temporary, brutal_kill, worker, [log_viewer]}).
 
 start_link(Options) ->
-   gen_server:start_link({local, log_viewer_srv}, ?MODULE, Options, []).
+   gen_server:start_link({local, log_viewer}, ?MODULE, Options, []).
 
 init(Options) ->
    process_flag(priority, low),
@@ -98,7 +98,7 @@ handle_call({list, Filters}, _From, State) ->
    catch
       _:Error ->
          error_logger:error_msg(
-            "log_viewer_srv::list call failed: ~p~n", [erlang:get_stacktrace()]),
+            "log_viewer::list call failed: ~p~n", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end;
 handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}) ->
@@ -108,7 +108,7 @@ handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}
    catch
       _:Error ->
          error_logger:error_msg(
-            "log_viewer_srv::show_number call failed: ~p~n", [erlang:get_stacktrace()]),
+            "log_viewer::show_number call failed: ~p~n", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end.
 
