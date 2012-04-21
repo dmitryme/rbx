@@ -121,7 +121,7 @@ get_records({Filters, Page, RecOnPage}) ->
    AllTypes = gen_server:call(log_viewer_inets, get_types),
    Records = gen_server:call(log_viewer_inets, {get_records, Filters}),
    lists:concat(["{\"types\":", list_to_json(AllTypes, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
-                 "\"pages\":", get_pages(Records, RecOnPage), ',',
+                  "\"records_count\":", length(Records), ',',
                  "\"records\":", get_records(Records, Page, RecOnPage), '}']).
 get_records(Records, Page, RecOnPage) ->
    StartFrom = lists:nthtail((Page - 1) * RecOnPage, Records),
@@ -131,19 +131,19 @@ get_records(Records, Page, RecOnPage) ->
 get_record(RecNum) ->
    gen_server:call(log_viewer_inets, {get_record, RecNum}).
 
-get_pages(Records, RecOnPage) ->
-   case get_pages(Records, RecOnPage, 1) of
-      Pages when length(Pages) =< 1 ->
-         "[]";
-      Pages ->
-         list_to_json(Pages, fun(P) -> lists:concat(['"', P, '"']) end)
-   end.
-get_pages([], _, _PageNum) ->
-   [];
-get_pages(Records, RecOnPage, PageNum) when length(Records) < RecOnPage ->
-   [PageNum];
-get_pages(Records, RecOnPage, PageNum) ->
-   [PageNum | get_pages(lists:nthtail(RecOnPage, Records), RecOnPage, PageNum + 1)].
+%get_pages(Records, RecOnPage) ->
+%   case get_pages(Records, RecOnPage, 1) of
+%      Pages when length(Pages) =< 1 ->
+%         "[]";
+%      Pages ->
+%         list_to_json(Pages, fun(P) -> lists:concat(['"', P, '"']) end)
+%   end.
+%get_pages([], _, _PageNum) ->
+%   [];
+%get_pages(Records, RecOnPage, PageNum) when length(Records) < RecOnPage ->
+%   [PageNum];
+%get_pages(Records, RecOnPage, PageNum) ->
+%   [PageNum | get_pages(lists:nthtail(RecOnPage, Records), RecOnPage, PageNum + 1)].
 
 record_to_json({No, RepType, Pid, Date}) ->
    lists:concat(["{\"no\":\"", No, "\",",

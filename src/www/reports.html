@@ -1,9 +1,16 @@
 <html>
    <head>
       <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-      <link rel="stylesheet" href="/www/style.css"/>
-      <script type="text/javascript" src="/www/jquery.js"></script>
+      <link rel="stylesheet" href="/www/css/style.css"/>
+      <link rel="stylesheet" href="/www/css/pagination.css"/>
+      <script type="text/javascript" src="/www/js/jquery.js"></script>
+      <script type="text/javascript" src="/www/js/jquery.pagination.js"></script>
       <script type="text/javascript">
+      function handlePaginationClick(new_page_index, pagination_container)
+      {
+         get_records(new_page_index + 1, false);
+         return false;
+      }
       function apply_types(data)
       {
          $("#lv_types").children().remove();
@@ -12,22 +19,6 @@
          {
             $("#lv_types").append($("<input type='checkbox'>").val(type).attr("checked", true));
             $("#lv_types").append($("<label>").text(type));
-         });
-      }
-      function apply_pages(pages, selPage)
-      {
-         $("#lv_pages").children().remove();
-         $.each(pages, function(i, page)
-         {
-            if (selPage == page)
-            {
-               $("#lv_pages").append($("<label>" + page + "</label>"));
-            }
-            else
-            {
-               $("#lv_pages").append($("<a href=\"#\">" + page + "</a>").click(function(){get_records(page)}));
-            }
-            $("#lv_pages").append($("<label>&nbsp;</label>"));
          });
       }
       function apply_records(records)
@@ -80,7 +71,7 @@
          });
          return res + "]";
       }
-      function get_records(page)
+      function get_records(page, doPagination)
       {
          var reg_exp = $("#lv_grep").val();
          var recOnPage = $("#lv_rec_on_page").val();
@@ -89,8 +80,14 @@
          $.post("/get_records", request, function(res)
          {
             var data = jQuery.parseJSON(res);
-            //apply_types(data.types);
-            apply_pages(data.pages, page);
+            if (doPagination)
+            {
+               $("#pagination").pagination(data.records_count,
+               {
+                  items_per_page:recOnPage,
+                  callback:handlePaginationClick
+               });
+            }
             apply_records(data.records);
          });
       }
@@ -104,7 +101,11 @@
          {
             var data = jQuery.parseJSON(res);
             apply_types(data.types);
-            apply_pages(data.pages, "1");
+            $("#pagination").pagination(data.records_count,
+            {
+               items_per_page:recOnPage,
+               callback:handlePaginationClick
+            });
             apply_records(data.records);
          });
       }
@@ -116,7 +117,7 @@
          });
          $("#lv_apply").click(function()
          {
-            get_records("1");
+            get_records("1", true);
          });
       });
       </script>
@@ -145,6 +146,8 @@
       </p>
       <p id="lv_types"></p>
       <p class="pages" id="lv_pages"></p>
+      <p id="pagination" class="pagination"></p>
+      <br style="clear:both;" />
       <table class="records" id="lv_records"/>
    </body>
 </html>
