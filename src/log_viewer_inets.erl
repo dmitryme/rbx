@@ -132,20 +132,6 @@ get_records(Records, Page, RecOnPage) ->
 get_record(RecNum) ->
    gen_server:call(log_viewer_inets, {get_record, RecNum}).
 
-%get_pages(Records, RecOnPage) ->
-%   case get_pages(Records, RecOnPage, 1) of
-%      Pages when length(Pages) =< 1 ->
-%         "[]";
-%      Pages ->
-%         list_to_json(Pages, fun(P) -> lists:concat(['"', P, '"']) end)
-%   end.
-%get_pages([], _, _PageNum) ->
-%   [];
-%get_pages(Records, RecOnPage, PageNum) when length(Records) < RecOnPage ->
-%   [PageNum];
-%get_pages(Records, RecOnPage, PageNum) ->
-%   [PageNum | get_pages(lists:nthtail(RecOnPage, Records), RecOnPage, PageNum + 1)].
-
 record_to_json({No, RepType, Pid, Date}) ->
    lists:concat(["{\"no\":\"", No, "\",",
    "\"type\":\"", RepType, "\",",
