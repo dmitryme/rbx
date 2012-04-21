@@ -96,9 +96,11 @@ handle_call({list, Filters}, _From, State) ->
       Res ->
          {reply, Res, State}
    catch
+      throw:Error ->
+         {reply, {error, Error}, State};
       _:Error ->
          error_logger:error_msg(
-            "log_viewer::list call failed: ~p~n", [erlang:get_stacktrace()]),
+            "log_viewer::list call failed: ~p", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end;
 handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}) ->
@@ -106,9 +108,11 @@ handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}
       Res ->
          {reply, Res, State}
    catch
+      throw:Error ->
+         {reply, {error, Error}, State};
       _:Error ->
          error_logger:error_msg(
-            "log_viewer::show_number call failed: ~p~n", [erlang:get_stacktrace()]),
+            "log_viewer::show_number call failed: ~p", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end.
 
@@ -392,7 +396,7 @@ print_report(Dir, Data, Number) ->
             {ok, Fd} ->
                read_rep(Fd, FilePosition);
             _ ->
-               throw(list:flatten(io_lib:format("can't open file ~p~n", [Fname])))
+               throw(lists:flatten(io_lib:format("can't open file ~p", [Fname])))
          end;
       no_report ->
          {error, not_found}
@@ -403,7 +407,7 @@ find_report([{No, _Type, _Descr, _Date, Fname, FilePosition}|_T], No) ->
 find_report([_H|T], No) ->
    find_report(T, No);
 find_report([], No) ->
-   throw(list:flatten(io_lib:format("there is no report with number ~p.~n", [No]))).
+   throw(lists:flatten(io_lib:format("there is no report with number ~p.", [No]))).
 
 get_compare_dates(Date, CompareDate) ->
     case application:get_env(sasl, utc_log) of
@@ -444,7 +448,7 @@ check_grep_report(Dir, {_No, _Type, _Descr, _Date, Fname, FilePosition}, RegExp)
       {ok, Fd} when is_pid(Fd) ->
          check_rep(Fd, FilePosition, RegExp);
       _ ->
-         throw(lists:flatten(io_lib:format("can't open file ~p~n", [Fname])))
+         throw(lists:flatten(io_lib:format("can't open file ~p", [Fname])))
    end.
 
 check_rep(Fd, FilePosition, RegExp) ->
