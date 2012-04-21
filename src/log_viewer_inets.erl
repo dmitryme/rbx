@@ -72,7 +72,8 @@ do(#mod{request_uri = Uri, entity_body = RecNum}) when Uri == "/get_record" ->
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri})  when Uri == "/" ->
    {ok, Bin} = file:read_file(get_doc_root() ++ "/www/index.html"),
-   {proceed, [{response, {200, binary_to_list(Bin)}}]};
+   Response = io_lib:format(binary_to_list(Bin), [node()]),
+   {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri})  when Uri == "/favicon.ico" ->
    {proceed, [{response, {404, ""}}]};
 do(#mod{request_uri = Uri}) ->
