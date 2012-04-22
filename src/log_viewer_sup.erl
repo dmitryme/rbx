@@ -28,9 +28,9 @@ init([]) ->
        {
           {one_for_one, 5, 10},
           [
-             ?CHILD(log_viewer, worker, []),
-             ?CHILD(log_viewer_inets, worker, []),
-             ?CHILD(log_viewer_cons, worker, [])
+             ?CHILD(log_viewer, worker, [])
+             %, ?CHILD(log_viewer_inets, worker, [])   % uncomment, if you want web ui
+             %, ?CHILD(log_viewer_cons, worker, [])
           ]
        }
     }.
