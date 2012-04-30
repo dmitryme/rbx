@@ -412,17 +412,17 @@ find_report([], No) ->
 get_compare_dates(Date, CompareDate) ->
     case application:get_env(sasl, utc_log) of
 	{ok, true} ->
-	    {common_utils:local_time_to_universal_time(Date),
-	     common_utils:local_time_to_universal_time(CompareDate)};
+	    {log_viewer_utils:local_time_to_universal_time(Date),
+	     log_viewer_utils:local_time_to_universal_time(CompareDate)};
 	_ ->
 	    {Date, CompareDate}
     end.
 get_compare_dates(Date, From, To) ->
     case application:get_env(sasl, utc_log) of
 	{ok, true} ->
-	    {common_utils:local_time_to_universal_time(Date),
-	     common_utils:local_time_to_universal_time(From),
-	     common_utils:local_time_to_universal_time(To)};
+	    {log_viewer_utils:local_time_to_universal_time(Date),
+	     log_viewer_utils:local_time_to_universal_time(From),
+	     log_viewer_utils:local_time_to_universal_time(To)};
 	_ ->
 	    {Date, From, To}
     end.

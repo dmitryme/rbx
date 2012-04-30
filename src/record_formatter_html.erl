@@ -23,12 +23,12 @@ format({Date, {warning_msg, _GL, {Pid, Format, Args}}})->
    print_info(format_h("WARNING REPORT", Pid, Date), {text, io_lib:format(Format, Args)});
 format({Date, {Type, _GL, TypeReport}})->
     io_lib:format("~nInfo type <~w> ~s~n~p",
-         [Type, common_utils:date_to_str(Date, true), TypeReport]);
+         [Type, log_viewer_utils:date_to_str(Date, true), TypeReport]);
 format(Report) ->
    io_lib:format("Unknown report type: ~s", [Report]).
 
 format_h(Header, Pid, Date) ->
-   io_lib:format("<tr><th>~s</th><th>~w</th><th>~s</th></tr>", [Header, Pid, common_utils:date_to_str(Date, true)]).
+   io_lib:format("<tr><th>~s</th><th>~w</th><th>~s</th></tr>", [Header, Pid, log_viewer_utils:date_to_str(Date, true)]).
 
 %%-----------------------------------------------------------------
 %% Crash report

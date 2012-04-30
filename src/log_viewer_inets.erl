@@ -150,7 +150,7 @@ record_to_json({No, RepType, Pid, Date}) ->
    lists:concat(["{\"no\":\"", No, "\",",
    "\"type\":\"", RepType, "\",",
    "\"pid\":\"", Pid, "\",",
-   "\"date\":\"", common_utils:date_to_str(Date, true), "\"}"]).
+   "\"date\":\"", log_viewer_utils:date_to_str(Date, true), "\"}"]).
 
 list_to_json(List, Fun) ->
    list_to_json(List, Fun, "[").
