@@ -1,5 +1,14 @@
 This is a web "replacement" of rb(report browser) based on httd + jQuery.
 
+How to build:
+
+edit src/log_viewer_sup.erl and uncomment CHILD(log_viewer_inets, worker, []) if you want to start web UI with
+application start
+
+then
+
+./rebar compile
+
 How to start:
 application:start(log_viewer).
 
