@@ -10,7 +10,7 @@ How to build:
 
 edit src/rbx_sup.erl uncomment CHILD(rbx_inets, worker, []) if you want to start web UI with
 application start
-or CHILD(rbx_cons, worker, []) is you stil want console
+or CHILD(rbx_cons, worker, []) is you still want console
 
 then
 
