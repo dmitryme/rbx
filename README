@@ -1,9 +1,16 @@
-This is a web "replacement" of rb(report browser) based on httd + jQuery.
+This is a extended "replacement" of rb(report browser).
+
+Created in document/view manner. rbx returns list of tuples or tuple and rbx_inets, rbx_cons are human
+readable presentation of these data.
+
+rbx_inets - web base view (use you favorite browser to explore logs)
+rbx_cons - console view(like rb does)
 
 How to build:
 
-edit src/log_viewer_sup.erl and uncomment CHILD(rbx_inets, worker, []) if you want to start web UI with
+edit src/rbx_sup.erl uncomment CHILD(rbx_inets, worker, []) if you want to start web UI with
 application start
+or CHILD(rbx_cons, worker, []) is you stil want console
 
 then
 
@@ -12,9 +19,12 @@ then
 How to start:
 application:start(rbx).
 
-and go http://localhost:8000 in you web browser
+go http://localhost:8000 in you web browser
+or
+rbx_cons:list(show, ...) if you are freak :)
 
 Possible config parameters:
-- inets_port - http port can be configured via config file or "erl -rbx inets_port 8001"
-- report_dir - path to logs. If no parameter is found, looking for sasl error_logger_mf_dir param.
-               Can be configured the same way as inets_port. E.g. "erl -rbx report_dir "/tmp/log""
+- inets_port <port>     - http port can be configured via config file or "erl -rbx inets_port 8001"
+- report_dir <path>     - path to logs. If no parameter is found, looking for sasl error_logger_mf_dir param.
+                          Can be configured the same way as inets_port. E.g. "erl -rbx report_dir "/tmp/log""
+- start_log  <filename> - rbx_cons will dump output into file instead of stdout
