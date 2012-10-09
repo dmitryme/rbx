@@ -1,4 +1,4 @@
--module(log_viewer_sup).
+-module(rbx_sup).
 
 -behaviour(supervisor).
 
@@ -28,9 +28,9 @@ init([]) ->
        {
           {one_for_one, 5, 10},
           [
-             ?CHILD(log_viewer, worker, [])
-             %, ?CHILD(log_viewer_inets, worker, [])   % uncomment, if you want web ui
-             %, ?CHILD(log_viewer_cons, worker, [])
+             ?CHILD(rbx, worker, [])
+             , ?CHILD(rbx_inets, worker, [])   % uncomment, if you want web ui
+             %, ?CHILD(rbx_cons, worker, [])
           ]
        }
     }.

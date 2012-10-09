@@ -16,7 +16,7 @@
 %%
 %% %CopyrightEnd%
 %%
--module(log_viewer).
+-module(rbx).
 
 -behaviour(gen_server).
 
@@ -51,19 +51,19 @@ list(Filter)
       when is_list(Filter) =/= true ->
    {error, wrong_args};
 list(Filter) ->
-   gen_server:call(log_viewer, {list, Filter}, infinity).
+   gen_server:call(rbx, {list, Filter}, infinity).
 
 -spec rescan(pos_integer()) -> filters() | {'error', term()}.
 rescan(Max) ->
-   gen_server:call(log_viewer, {rescan, Max}, infinity).
+   gen_server:call(rbx, {rescan, Max}, infinity).
 
 -spec show(all | pos_integer()) -> term().
 show(Number) when is_integer(Number) ->
-   gen_server:call(log_viewer, {show_number, Number}, infinity).
+   gen_server:call(rbx, {show_number, Number}, infinity).
 
 -spec get_types() -> filters() | {'error', term()}.
 get_types() ->
-   gen_server:call(log_viewer, get_types, infinity).
+   gen_server:call(rbx, get_types, infinity).
 
 %%-----------------------------------------------------------------
 %% gen_server interface functions.
@@ -71,11 +71,11 @@ get_types() ->
 start() -> start([]).
 start(Options) ->
     supervisor:start_child(sasl_sup,
-         		   {log_viewer, {log_viewer, start_link, [Options]},
-			    temporary, brutal_kill, worker, [log_viewer]}).
+         		   {rbx, {rbx, start_link, [Options]},
+			    temporary, brutal_kill, worker, [rbx]}).
 
 start_link(Options) ->
-   gen_server:start_link({local, log_viewer}, ?MODULE, Options, []).
+   gen_server:start_link({local, rbx}, ?MODULE, Options, []).
 
 init(Options) ->
    process_flag(priority, low),
@@ -100,7 +100,7 @@ handle_call({list, Filters}, _From, State) ->
          {reply, {error, Error}, State};
       _:Error ->
          error_logger:error_msg(
-            "log_viewer::list call failed: ~p", [erlang:get_stacktrace()]),
+            "rbx::list call failed: ~p", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end;
 handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}) ->
@@ -112,7 +112,7 @@ handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}
          {reply, {error, Error}, State};
       _:Error ->
          error_logger:error_msg(
-            "log_viewer::show_number call failed: ~p", [erlang:get_stacktrace()]),
+            "rbx::show_number call failed: ~p", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end.
 
@@ -412,17 +412,17 @@ find_report([], No) ->
 get_compare_dates(Date, CompareDate) ->
     case application:get_env(sasl, utc_log) of
 	{ok, true} ->
-	    {log_viewer_utils:local_time_to_universal_time(Date),
-	     log_viewer_utils:local_time_to_universal_time(CompareDate)};
+	    {rbx_utils:local_time_to_universal_time(Date),
+	     rbx_utils:local_time_to_universal_time(CompareDate)};
 	_ ->
 	    {Date, CompareDate}
     end.
 get_compare_dates(Date, From, To) ->
     case application:get_env(sasl, utc_log) of
 	{ok, true} ->
-	    {log_viewer_utils:local_time_to_universal_time(Date),
-	     log_viewer_utils:local_time_to_universal_time(From),
-	     log_viewer_utils:local_time_to_universal_time(To)};
+	    {rbx_utils:local_time_to_universal_time(Date),
+	     rbx_utils:local_time_to_universal_time(From),
+	     rbx_utils:local_time_to_universal_time(To)};
 	_ ->
 	    {Date, From, To}
     end.

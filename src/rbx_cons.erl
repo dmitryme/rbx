@@ -1,4 +1,4 @@
--module(log_viewer_cons).
+-module(rbx_cons).
 
 -behaviour(gen_server).
 
@@ -11,14 +11,14 @@
 start() -> start([]).
 start(Options) ->
     supervisor:start_child(sasl_sup,
-           	   {log_viewer_cons, {log_viewer_cons, start_link, [Options]},
-			    temporary, brutal_kill, worker, [log_viewer_cons]}).
+           	   {rbx_cons, {rbx_cons, start_link, [Options]},
+			    temporary, brutal_kill, worker, [rbx_cons]}).
 
 start_link(Options) ->
-   gen_server:start_link({local, log_viewer_cons}, ?MODULE, Options, []).
+   gen_server:start_link({local, rbx_cons}, ?MODULE, Options, []).
 
 reload_static() ->
-   gen_server:cast(log_viewer_cons, reload_static).
+   gen_server:cast(rbx_cons, reload_static).
 
 init(_Options) ->
    {ok, #state{}}.

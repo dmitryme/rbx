@@ -1,12 +1,12 @@
-{application, log_viewer,
+{application, rbx,
  [
   {description, ""},
-  {vsn, "0.9.0"},
+  {vsn, "0.10.0"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { log_viewer_app, []}},
+  {mod, { rbx_app, []}},
   {env, []}
  ]}.

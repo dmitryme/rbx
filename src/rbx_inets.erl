@@ -1,4 +1,4 @@
--module(log_viewer_inets).
+-module(rbx_inets).
 
 -behaviour(gen_server).
 
@@ -15,18 +15,18 @@
 start() -> start([]).
 start(Options) ->
     supervisor:start_child(sasl_sup,
-           	   {log_viewer_inets, {log_viewer_inets, start_link, [Options]},
-			    temporary, brutal_kill, worker, [log_viewer_inets]}).
+           	   {rbx_inets, {rbx_inets, start_link, [Options]},
+			    temporary, brutal_kill, worker, [rbx_inets]}).
 
 start_link(Options) ->
-   gen_server:start_link({local, log_viewer_inets}, ?MODULE, Options, []).
+   gen_server:start_link({local, rbx_inets}, ?MODULE, Options, []).
 
 init(Options) ->
    inets:start(),
    DocRoot = filename:nativename(get_option(document_root, Options, ".")),
    {ok, Pid} = inets:start(httpd, [
       {port, get_option(inets_port, Options, 8000)},
-      {server_name, "log_viewer"},
+      {server_name, "rbx"},
       {server_root, "."},
       {document_root, DocRoot},
       {modules, [?MODULE]},
@@ -36,18 +36,18 @@ init(Options) ->
    {ok, #state{document_root = DocRoot}}.
 
 handle_call(get_types, _, State) ->
-   {reply, log_viewer:get_types(), State};
+   {reply, rbx:get_types(), State};
 handle_call({get_records, Filters}, _From, State) ->
-   Records = log_viewer:list(Filters),
+   Records = rbx:list(Filters),
    {reply, Records, State};
 handle_call({get_record, RecNum}, _From, State) ->
-   FmtRecord = record_formatter_html:format(log_viewer:show(RecNum)),
+   FmtRecord = record_formatter_html:format(rbx:show(RecNum)),
    {reply, FmtRecord, State};
 handle_call(get_doc_root, _From, State) ->
    {reply, State#state.document_root, State}.
 
 handle_cast({rescan, MaxRecords}, State) ->
-   log_viewer:rescan(MaxRecords),
+   rbx:rescan(MaxRecords),
    {noreply, State};
 handle_cast(_Msg, State) ->
    {noreply, State}.
@@ -91,7 +91,7 @@ do(#mod{request_uri = Uri}) ->
 %%=============================================================
 
 get_doc_root() ->
-   gen_server:call(log_viewer_inets, get_doc_root).
+   gen_server:call(rbx_inets, get_doc_root).
 
 get_option(OpName, Options, Default) ->
    case proplists:get_value(OpName, Options) of
@@ -111,7 +111,7 @@ rescan(Query) when is_list(Query) ->
    {ok, Term} = erl_parse:parse_term(Tokens),
    rescan(Term);
 rescan({MaxRecords, RecOnPage, Filters}) ->
-   gen_server:cast(log_viewer_inets, {rescan, MaxRecords}),
+   gen_server:cast(rbx_inets, {rescan, MaxRecords}),
    get_records({Filters, 1, RecOnPage}).
 
 get_records(Query) when is_list(Query) ->
@@ -119,8 +119,8 @@ get_records(Query) when is_list(Query) ->
    {ok, Term} = erl_parse:parse_term(Tokens),
    get_records(Term);
 get_records({Filters, Page, RecOnPage}) ->
-   AllTypes = gen_server:call(log_viewer_inets, get_types),
-   Records = gen_server:call(log_viewer_inets, {get_records, Filters}),
+   AllTypes = gen_server:call(rbx_inets, get_types),
+   Records = gen_server:call(rbx_inets, {get_records, Filters}),
    lists:concat(["{\"types\":", list_to_json(AllTypes, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
                   "\"records_count\":", length(Records), ',',
                  "\"records\":", get_records(Records, Page, RecOnPage), '}']).
@@ -130,13 +130,13 @@ get_records(Records, Page, RecOnPage) ->
    list_to_json(PageRecords, fun record_to_json/1).
 
 get_record(RecNum) ->
-   gen_server:call(log_viewer_inets, {get_record, RecNum}).
+   gen_server:call(rbx_inets, {get_record, RecNum}).
 
 record_to_json({No, RepType, Pid, Date}) ->
    lists:concat(["{\"no\":\"", No, "\",",
    "\"type\":\"", RepType, "\",",
    "\"pid\":\"", Pid, "\",",
-   "\"date\":\"", log_viewer_utils:date_to_str(Date, true), "\"}"]).
+   "\"date\":\"", rbx_utils:date_to_str(Date, true), "\"}"]).
 
 list_to_json(List, Fun) ->
    list_to_json(List, Fun, "[").

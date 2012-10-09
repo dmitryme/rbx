@@ -1,4 +1,4 @@
--module(log_viewer_utils).
+-module(rbx_utils).
 
 -export([date_to_str/2, list_to_atom/1]).
 
