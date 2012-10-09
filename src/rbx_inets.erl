@@ -23,7 +23,7 @@ start_link(Options) ->
 
 init(Options) ->
    inets:start(),
-   DocRoot = filename:nativename(get_option(document_root, Options, ".")),
+   DocRoot = filename:nativename(rbx_utils:get_option(document_root, Options, ".")),
    {ok, Pid} = inets:start(httpd, [
       {port, get_option(inets_port, Options, 8000)},
       {server_name, "rbx"},
@@ -92,19 +92,6 @@ do(#mod{request_uri = Uri}) ->
 
 get_doc_root() ->
    gen_server:call(rbx_inets, get_doc_root).
-
-get_option(OpName, Options, Default) ->
-   case proplists:get_value(OpName, Options) of
-      undefined ->
-         case application:get_env(OpName) of
-            undefined ->
-               Default;
-            {ok, Val} ->
-               Val
-         end;
-      Value ->
-         Value
-   end.
 
 rescan(Query) when is_list(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),

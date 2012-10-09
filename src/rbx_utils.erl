@@ -1,6 +1,6 @@
 -module(rbx_utils).
 
--export([date_to_str/2, list_to_atom/1]).
+-export([date_to_str/2, list_to_atom/1, get_option/3]).
 
 -compile({no_auto_import, [list_to_atom/1]}).
 
@@ -28,6 +28,20 @@ date_to_str({{Y,Mo,D}=Date,{H,Mi,S}=Time}, UseSaslUtc) ->
                                      "~2.2.0w:~2.2.0w",
                                      [Y,Mo,D,H,Mi,S]))
    end.
+
+get_option(OpName, Options, Default) ->
+   case proplists:get_value(OpName, Options) of
+      undefined ->
+         case application:get_env(OpName) of
+            undefined ->
+               Default;
+            {ok, Val} ->
+               Val
+         end;
+      Value ->
+         Value
+   end.
+
 
 %=======================================================================================================================
 %  private
