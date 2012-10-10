@@ -1,54 +1,79 @@
--module(rbx_inets).
+-module(rbx_cons).
 
 -behaviour(gen_server).
-
--include_lib("inets/include/httpd.hrl").
 
 %% gen_server callbacks
 -export([start/0, start/1, start_link/1, init/1, terminate/2, handle_call/3,
          handle_cast/2, handle_info/2, code_change/3]).
 
--export([do/1]).
+%% public exports
+-export([list/0, list/1, rescan/1, show/1, start_log/1, stop_log/0, attach/1, detach/0]).
 
--record(state, {document_root}).
+-record(state, {device}).
 
+%======================================================================================================================
+%  gen_server interface functions
+%=======================================================================================================================
 start() -> start([]).
 start(Options) ->
     supervisor:start_child(sasl_sup,
-           	   {rbx_inets, {rbx_inets, start_link, [Options]},
-			    temporary, brutal_kill, worker, [rbx_inets]}).
+                   {rbx_cons, {rbx_cons, start_link, [Options]},
+                            temporary, brutal_kill, worker, [rbx_cons]}).
 
 start_link(Options) ->
-   gen_server:start_link({local, rbx_inets}, ?MODULE, Options, []).
+   gen_server:start_link({local, rbx_cons}, ?MODULE, Options, []).
 
+list() ->
+   list([]).
+
+list(Filter) ->
+   gen_server:cast(rbx_cons, {list, Filter}).
+
+rescan(MaxRecords) ->
+   gen_server:cast(rbx_cons, {rescan, MaxRecords}).
+
+show() ->
+   show(all).
+
+show(Number) ->
+   gen_server:cast(rbx_cons, {show, Number}).
+
+start_log(Filename) ->
+   gen_server:cast(rbx_cons, {start_log, Filename}).
+
+stop_log() -> ok.
+
+attach(Node) -> ok.
+
+detach() -> ok.
+
+%=======================================================================================================================
+%  gen_server interface functions
+%=======================================================================================================================
 init(Options) ->
-   inets:start(),
-   DocRoot = filename:nativename(rbx_utils:get_option(document_root, Options, ".")),
-   {ok, Pid} = inets:start(httpd, [
-      {port, rbx_utils:get_option(inets_port, Options, 8000)},
-      {server_name, "rbx"},
-      {server_root, "."},
-      {document_root, DocRoot},
-      {modules, [?MODULE]},
-      {mime_types, [{"css", "text/css"}, {"js", "text/javascript"}, {"html", "text/html"}]}
-   ]),
-   link(Pid),
-   {ok, #state{document_root = DocRoot}}.
+   Log = rbx_utils:get_option(Options, start_log, standard_io),
+   Device = open_log_file(Log),
+   {ok, #state{device = Device}}.
 
-handle_call(get_types, _, State) ->
-   {reply, rbx:get_types(), State};
-handle_call({get_records, Filters}, _From, State) ->
-   Records = rbx:list(Filters),
-   {reply, Records, State};
-handle_call({get_record, RecNum}, _From, State) ->
-   FmtRecord = record_formatter_html:format(rbx:show(RecNum)),
-   {reply, FmtRecord, State};
-handle_call(get_doc_root, _From, State) ->
-   {reply, State#state.document_root, State}.
+handle_call(_, _, State) ->
+   {reply, ok, State}.
 
+handle_cast({list, Filters}, _From, State) ->
+   Reports = rbx:list(Filters),
+   print_list(Reports, State#state.device),
+   {reply, Res, State};
+handle_cast({show, Number}, _From, State) ->
+   rbx:show(Number),
+   {reply, Res, State}.
 handle_cast({rescan, MaxRecords}, State) ->
    rbx:rescan(MaxRecords),
    {noreply, State};
+handle_cast({start_log, Filename}, State) ->
+   NewDevice = open_log_file(FileName),
+   {noreply, State#state{device = NewDevice}};
+handle_cast(stop_log, State) ->
+   close_device(State#state.device),
+   {noreply, State#state{device = standard_io}};
 handle_cast(_Msg, State) ->
    {noreply, State}.
 
@@ -61,77 +86,68 @@ handle_info(_Info, State) ->
 code_change(_OldVsn, State, _Extra) ->
    {ok, State}.
 
-do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/rescan" ->
-   Response = rescan(Query),
-   {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_records" ->
-   Response = get_records(Query),
-   {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri, entity_body = RecNum}) when Uri == "/get_record" ->
-   Response = get_record(list_to_integer(RecNum)),
-   {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri})  when Uri == "/" ->
-   {ok, Bin} = file:read_file(get_doc_root() ++ "/www/index.html"),
-   Response = io_lib:format(binary_to_list(Bin), [node()]),
-   {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri})  when Uri == "/favicon.ico" ->
-   {proceed, [{response, {404, ""}}]};
-do(#mod{request_uri = Uri}) ->
-   case file:read_file(get_doc_root() ++ Uri) of
-      {ok, Bin} ->
-         {proceed, [{response, {200, binary_to_list(Bin)}}]};
-      {error, Reason} ->
-         error_logger:error_msg("Unable to read file '~s'. Reason = ~p~n", [Uri, Reason]),
-         {proceed, [{response, {404, "ERROR: Page " ++ Uri ++ " not found."}}]}
+%=======================================================================================================================
+%  private
+%=======================================================================================================================
+open_log_file(standard_io) -> standard_io;
+open_log_file(FileName) ->
+   case file:open(FileName, [write,append]) of
+      {ok, Fd} ->
+         Fd;
+           Error ->
+              io:format("rbx: Cannot open file '~s' (~w).~n", [FileName, Error]),
+              io:format("rbx: Using standard_io~n"),
+         standard_io
    end.
 
+close_device(Fd) when is_pid(Fd) ->
+   catch file:close(Fd);
+close_device(_) -> ok.
 
-%%=============================================================
-%% utils
-%%=============================================================
+print_list(Reports, Device) ->
+   Header = {"No", "Type", "Process", "Date     Time"},
+   Width = find_width([Header | Reports], 0) + 1,
+   DateWidth = find_date_width([Header | Data], 0) + 1,
+   Format = lists:concat(["~4s~20s ~", Width, "s~20s~n"]),
+   io:format(Device, Format, tuple_to_list(Header)),
+   io:format(Device, Format, ["==", "====", "=======", "====     ===="]),
+   print_list(Device, Reports, Width, DateWidth).
+print_list(_, [], _, _, _) -> true;
+print_list(Device, [H|T], Width, DateWidth) ->
+   print_one_report(Device, H, Width, DateWidth),
+   print_list(Device, T, Width, DateWidth).
 
-get_doc_root() ->
-   gen_server:call(rbx_inets, get_doc_root).
+find_width([], Width) -> Width;
+find_width([H|T], Width) ->
+   Try = length(element(3, H)),
+   if
+           Try > Width -> find_width(T, Try);
+           true -> find_width(T, Width)
+   end.
 
-rescan(Query) when is_list(Query) ->
-   {ok, Tokens, _} = erl_scan:string(Query),
-   {ok, Term} = erl_parse:parse_term(Tokens),
-   rescan(Term);
-rescan({MaxRecords, RecOnPage, Filters}) ->
-   gen_server:cast(rbx_inets, {rescan, MaxRecords}),
-   get_records({Filters, 1, RecOnPage}).
+find_date_width([], Width) -> Width;
+find_date_width([H|T], Width) ->
+   Try = length(element(4, H)),
+   if
+           Try > Width -> find_date_width(T, Try);
+           true -> find_date_width(T, Width)
+   end.
 
-get_records(Query) when is_list(Query) ->
-   {ok, Tokens, _} = erl_scan:string(Query),
-   {ok, Term} = erl_parse:parse_term(Tokens),
-   get_records(Term);
-get_records({Filters, Page, RecOnPage}) ->
-   AllTypes = gen_server:call(rbx_inets, get_types),
-   Records = gen_server:call(rbx_inets, {get_records, Filters}),
-   lists:concat(["{\"types\":", list_to_json(AllTypes, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
-                  "\"records_count\":", length(Records), ',',
-                 "\"records\":", get_records(Records, Page, RecOnPage), '}']).
-get_records(Records, Page, RecOnPage) ->
-   StartFrom = lists:nthtail((Page - 1) * RecOnPage, Records),
-   PageRecords = lists:sublist(StartFrom, min(length(StartFrom), RecOnPage)),
-   list_to_json(PageRecords, fun record_to_json/1).
+print_one_report({No, RealType, ShortDescr, Date, _Fname, _FilePos},
+                 Width, DateWidth) ->
+    if
+        WantedType == all ->
+            print_short_descr(No, RealType, ShortDescr, Date, Width, 
+                              DateWidth);
+        WantedType == RealType ->
+            print_short_descr(No, RealType, ShortDescr, Date, Width, 
+                              DateWidth);
+        true -> ok
+    end.
 
-get_record(RecNum) ->
-   gen_server:call(rbx_inets, {get_record, RecNum}).
-
-record_to_json({No, RepType, Pid, Date}) ->
-   lists:concat(["{\"no\":\"", No, "\",",
-   "\"type\":\"", RepType, "\",",
-   "\"pid\":\"", Pid, "\",",
-   "\"date\":\"", rbx_utils:date_to_str(Date, true), "\"}"]).
-
-list_to_json(List, Fun) ->
-   list_to_json(List, Fun, "[").
-list_to_json([], _Fun, Acc) ->
-   Acc ++ "]";
-list_to_json([Last], Fun, "[") ->
-   lists:concat(["[", Fun(Last), "]"]);
-list_to_json([Last], Fun, Acc) ->
-   lists:concat([Acc, Fun(Last), "]"]);
-list_to_json([H|T], Fun, Acc) ->
-   list_to_json(T, Fun, lists:concat([Acc, Fun(H), ","])).
+print_short_descr(No, Type, ShortDescr, Date, Width, DateWidth) ->
+    Format = lists:concat(["~4w~20w ~", Width, "s~", DateWidth,"s~n"]),
+    io:format(Format, [No,
+                       Type, 
+                       io_lib:format("~s", [ShortDescr]),
+                       Date]).
