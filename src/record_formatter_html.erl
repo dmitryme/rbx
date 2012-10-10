@@ -24,7 +24,7 @@ format({Date, {warning_msg, _GL, {Pid, Format, Args}}}, UtcLog)->
 format({Date, {Type, _GL, TypeReport}}, UtcLog)->
     io_lib:format("~nInfo type <~w> ~s~n~p",
          [Type, rbx_utils:date_to_str(Date, UtcLog), TypeReport]);
-format(Report, UtcLog) ->
+format(Report, _UtcLog) ->
    io_lib:format("Unknown report type: ~s", [Report]).
 
 format_h(Header, Pid, Date, UtcLog) ->
