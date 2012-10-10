@@ -28,9 +28,9 @@ init([]) ->
        {
           {one_for_one, 5, 10},
           [
-             ?CHILD(rbx, worker, [])
-             %, ?CHILD(rbx_inets, worker, [])   % uncomment, if you want web ui
-             , ?CHILD(rbx_cons, worker, [])
+             ?CHILD(rbx, worker, []),
+             ?CHILD(rbx_inets, worker, []),
+             ?CHILD(rbx_cons, worker, [])
           ]
        }
     }.
