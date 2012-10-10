@@ -65,7 +65,8 @@ handle_call({list, Filters}, _From, State) ->
    print_list(Reports, State#state.device, State#state.utc_log),
    {reply, ok, State};
 handle_call({show, Number}, _From, State) ->
-   rbx:show(Number),
+   Report = rbx:show(Number),
+   record_formatter_cons:format(State#state.device, State#state.utc_log, Report),
    {reply, ok, State};
 handle_call(_, _, State) ->
    {reply, ok, State}.

@@ -1,34 +1,35 @@
 -module(record_formatter_cons).
 
 %% intermodule exports
--export([format/1]).
+-export([format/3]).
 
-format({Date, {error_report, _GL, {Pid, crash_report, CrashReport}}}) ->
-   print_info(format_h("CRASH REPORT", Pid, Date), format_c(CrashReport));
-format({Date, {error_report, _GL, {Pid, supervisor_report, SupReport}}})->
-   print_info(format_h("SUPERVISOR REPORT", Pid, Date), format_s(SupReport));
-format({Date, {error_report, _GL, {Pid, _Type, Report1}}})->
-   print_info(format_h("ERROR REPORT", Pid, Date), [{data, Report1}]);
-format({Date, {info_report, _GL, {Pid, progress, SupProgress}}})->
-   print_info(format_h("PROGRESS REPORT", Pid, Date), format_p(SupProgress));
-format({Date, {info_report, _GL, {Pid, _Type, Report1}}})->
-   print_info(format_h("INFO REPORT", Pid, Date), [{data, Report1}]);
-format({Date, {warning_report, _GL, {Pid, _Type, Report1}}})->
-   print_info(format_h("WARNING REPORT", Pid, Date), [{data, Report1}]);
-format({Date, {error, _GL, {Pid, Format, Args}}})->
-   print_info(format_h("ERROR REPORT", Pid, Date), {text, io_lib:format(Format, Args)});
-format({Date, {info_msg, _GL, {Pid, Format, Args}}})->
-   print_info(format_h("INFO REPORT", Pid, Date), {text, io_lib:format(Format, Args)});
-format({Date, {warning_msg, _GL, {Pid, Format, Args}}})->
-   print_info(format_h("WARNING REPORT", Pid, Date), {text, io_lib:format(Format, Args)});
-format({Date, {Type, _GL, TypeReport}})->
-    io_lib:format("~nInfo type <~w> ~s~n~p",
-         [Type, rbx_utils:date_to_str(Date, true), TypeReport]);
-format(Report) ->
-   io_lib:format("Unknown report type: ~s", [Report]).
+format(Device, UtcLog, {Date, {error_report, _GL, {Pid, crash_report, CrashReport}}}) ->
+   print_info(Device, format_h("CRASH REPORT", Pid, Date, UtcLog), format_c(CrashReport));
+format(Device, UtcLog, {Date, {error_report, _GL, {Pid, supervisor_report, SupReport}}})->
+   print_info(Device, format_h("SUPERVISOR REPORT", Pid, Date, UtcLog), format_s(SupReport));
+format(Device, UtcLog, {Date, {error_report, _GL, {Pid, _Type, Report1}}})->
+   print_info(Device, format_h("ERROR REPORT", Pid, Date, UtcLog), [{data, Report1}]);
+format(Device, UtcLog, {Date, {info_report, _GL, {Pid, progress, SupProgress}}})->
+   print_info(Device, format_h("PROGRESS REPORT", Pid, Date, UtcLog), format_p(SupProgress));
+format(Device, UtcLog, {Date, {info_report, _GL, {Pid, _Type, Report1}}})->
+   print_info(Device, format_h("INFO REPORT", Pid, Date, UtcLog), [{data, Report1}]);
+format(Device, UtcLog, {Date, {warning_report, _GL, {Pid, _Type, Report1}}})->
+   print_info(Device, format_h("WARNING REPORT", Pid, Date, UtcLog), [{data, Report1}]);
+format(Device, UtcLog, {Date, {error, _GL, {Pid, Format, Args}}})->
+   print_info(Device, format_h("ERROR REPORT", Pid, Date, UtcLog), {text, io_lib:format(Format, Args)});
+format(Device, UtcLog, {Date, {info_msg, _GL, {Pid, Format, Args}}})->
+   print_info(Device, format_h("INFO REPORT", Pid, Date, UtcLog), {text, io_lib:format(Format, Args)});
+format(Device, UtcLog, {Date, {warning_msg, _GL, {Pid, Format, Args}}})->
+   print_info(Device, format_h("WARNING REPORT", Pid, Date, UtcLog), {text, io_lib:format(Format, Args)});
+format(Device, UtcLog, {Date, {Type, _GL, TypeReport}})->
+   io:format(Device, "~nInfo type <~w> ~s~n~p",
+      [Type, rbx_utils:date_to_str(Date, UtcLog), TypeReport]);
+format(Device, _UtcLog, Report) ->
+   io:format(Device, "Unknown report type: ~s", [Report]).
 
-format_h(Header, Pid, Date) ->
-   io_lib:format("<tr><th>~s</th><th>~w</th><th>~s</th></tr>", [Header, Pid, rbx_utils:date_to_str(Date, true)]).
+format_h(Header, Pid, Date, UtcLog) ->
+   NHeader = lists:flatten(io_lib:format("~s  ~w", [Header, Pid])),
+   io_lib:format("~-60s~19s", [NHeader, rbx_utils:date_to_str(Date, UtcLog)]).
 
 %%-----------------------------------------------------------------
 %% Crash report
@@ -65,13 +66,13 @@ transform_mfa(X) ->
 format_p(Data) ->
    [{data, Data}].
 
-print_info(Header, Report) ->
-   "<table class='rdisplay_header'>" ++ Header ++ "</table><br/><table class='rdisplay_data'>" ++ print_report(Report) ++ "</table>".
+print_info(Device, Header, Report) ->
+   io:format(Device, "~s~n~79..=s~n~s~n", [Header, "", print_report(Report)]).
 
 print_report([]) ->
    [];
 print_report({text, Text}) ->
-   "<tr><td colspan='2'>" ++ replace_to_html_entities(lists:flatten(Text)) ++ "</td></tr>";
+   lists:flatten(Text);
 print_report([{data, Data}|T]) ->
    [print_data(Data), print_report(T)];
 print_report([{table, Table}|T]) ->
@@ -87,7 +88,7 @@ print_data([]) -> [];
 print_data([{Key, Value}|T]) ->
    [print_one_line(Key, Value) | print_data(T)];
 print_data([Value|T]) ->
-   StrData = io_lib:format("<tr><td class='item_value' colspan='2'>~s</td></tr>", [term_to_string(Value)]),
+   StrData = io_lib:format("~s", [term_to_string(Value)]),
    [StrData, print_data(T)].
 
 print_items({Name, Items}) ->
@@ -98,14 +99,13 @@ print_table({TableName, ColumnNames, Columns}) ->
 
 print_newlines(0) -> [];
 print_newlines(N) when N > 0 ->
-   ["<tr><td colspan='2'></td></tr>", print_newlines(N-1)].
+   [io_lib:format("~n"), print_newlines(N-1)].
 
 print_one_line(Key, Value) ->
-   io_lib:format("<tr><td class='item_key'>~s</td><td class='item_value'>~s</td></tr>", [term_to_string(Key), term_to_string(Value)]).
+   io_lib:format("~-25s~54s~n", [term_to_string(Key), term_to_string(Value)]).
 
 term_to_string(Value) ->
-   FmtValue = lists:flatten(io_lib:format(get_format(Value), [Value])),
-   lists:flatten(replace_to_html_entities(FmtValue)).
+   lists:flatten(io_lib:format(get_format(Value), [Value])).
 
 get_format(Value) ->
    case misc_supp:is_string(Value) of
@@ -142,11 +142,3 @@ print_row(Row) ->
    lists:flatten(["<tr>", lists:foldl(fun(ColVal, Acc) ->
                            ["<td>", term_to_string(ColVal), "</td>", Acc]
             end, [], Row), "</tr>"]).
-
-replace_to_html_entities(Str) ->
-   lists:foldr(fun(32, Acc) ->
-                     ["&nbsp;", Acc];
-                  (10, Acc) ->
-                     ["<br/>", Acc];
-                  (Ch, Acc) ->
-                     [Ch | Acc] end, [], Str).
