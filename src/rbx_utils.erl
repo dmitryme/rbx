@@ -16,18 +16,11 @@ list_to_atom(Lst) ->
          Res
    end.
 
-date_to_str({{Y,Mo,D}=Date,{H,Mi,S}=Time}, UseSaslUtc) ->
-   case application:get_env(sasl,utc_log) of
-      {ok,true} when UseSaslUtc == true ->
-         {{YY,MoMo,DD},{HH,MiMi,SS}} = local_time_to_universal_time({Date,Time}),
-         lists:flatten(io_lib:format("~w-~2.2.0w-~2.2.0w ~2.2.0w:"
-                                     "~2.2.0w:~2.2.0w UTC",
-                                     [YY,MoMo,DD,HH,MiMi,SS]));
-      _ ->
-         lists:flatten(io_lib:format("~w-~2.2.0w-~2.2.0w ~2.2.0w:"
-                                     "~2.2.0w:~2.2.0w",
-                                     [Y,Mo,D,H,Mi,S]))
-   end.
+date_to_str(DateTime, true) ->
+   {{YY,MoMo,DD},{HH,MiMi,SS}} = local_time_to_universal_time(DateTime),
+   lists:flatten(io_lib:format("~w-~2.2.0w-~2.2.0w ~2.2.0w:" "~2.2.0w:~2.2.0w UTC", [YY,MoMo,DD,HH,MiMi,SS]));
+date_to_str({{Y,Mo,D},{H,Mi,S}}, false) ->
+   lists:flatten(io_lib:format("~w-~2.2.0w-~2.2.0w ~2.2.0w:" "~2.2.0w:~2.2.0w", [Y,Mo,D,H,Mi,S])).
 
 get_option(OpName, Options, Default) ->
    case proplists:get_value(OpName, Options) of
