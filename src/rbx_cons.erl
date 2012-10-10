@@ -7,9 +7,9 @@
          handle_cast/2, handle_info/2, code_change/3]).
 
 %% public exports
--export([list/0, list/1, rescan/1, show/1, start_log/1, stop_log/0, attach/1, detach/0]).
+-export([list/0, list/1, rescan/1, show/0, show/1, start_log/1, stop_log/0, attach/1, detach/0]).
 
--record(state, {device}).
+-record(state, {device, utc_log}).
 
 %======================================================================================================================
 %  gen_server interface functions
@@ -27,23 +27,24 @@ list() ->
    list([]).
 
 list(Filter) ->
-   gen_server:cast(rbx_cons, {list, Filter}).
+   gen_server:call(rbx_cons, {list, Filter}).
 
 rescan(MaxRecords) ->
-   gen_server:cast(rbx_cons, {rescan, MaxRecords}).
+   gen_server:call(rbx_cons, {rescan, MaxRecords}).
 
 show() ->
    show(all).
 
 show(Number) ->
-   gen_server:cast(rbx_cons, {show, Number}).
+   gen_server:call(rbx_cons, {show, Number}).
 
 start_log(Filename) ->
    gen_server:cast(rbx_cons, {start_log, Filename}).
 
-stop_log() -> ok.
+stop_log() ->
+   gen_server:cast(rbx_cons, stop_log).
 
-attach(Node) -> ok.
+attach(_Node) -> ok.
 
 detach() -> ok.
 
@@ -51,25 +52,29 @@ detach() -> ok.
 %  gen_server interface functions
 %=======================================================================================================================
 init(Options) ->
-   Log = rbx_utils:get_option(Options, start_log, standard_io),
+   Log = rbx_utils:get_option(start_log, Options, standard_io),
    Device = open_log_file(Log),
-   {ok, #state{device = Device}}.
+   UtcLog = case application:get_env(sasl, utc_log) of
+      {ok, true} -> true;
+      _ -> false
+   end,
+   {ok, #state{device = Device, utc_log = UtcLog}}.
 
+handle_call({list, Filters}, _From, State) ->
+   Reports = rbx:list(Filters),
+   print_list(Reports, State#state.device, State#state.utc_log),
+   {reply, ok, State};
+handle_call({show, Number}, _From, State) ->
+   rbx:show(Number),
+   {reply, ok, State};
 handle_call(_, _, State) ->
    {reply, ok, State}.
 
-handle_cast({list, Filters}, _From, State) ->
-   Reports = rbx:list(Filters),
-   print_list(Reports, State#state.device),
-   {reply, Res, State};
-handle_cast({show, Number}, _From, State) ->
-   rbx:show(Number),
-   {reply, Res, State}.
 handle_cast({rescan, MaxRecords}, State) ->
    rbx:rescan(MaxRecords),
    {noreply, State};
 handle_cast({start_log, Filename}, State) ->
-   NewDevice = open_log_file(FileName),
+   NewDevice = open_log_file(Filename),
    {noreply, State#state{device = NewDevice}};
 handle_cast(stop_log, State) ->
    close_device(State#state.device),
@@ -104,50 +109,29 @@ close_device(Fd) when is_pid(Fd) ->
    catch file:close(Fd);
 close_device(_) -> ok.
 
-print_list(Reports, Device) ->
-   Header = {"No", "Type", "Process", "Date     Time"},
-   Width = find_width([Header | Reports], 0) + 1,
-   DateWidth = find_date_width([Header | Data], 0) + 1,
-   Format = lists:concat(["~4s~20s ~", Width, "s~20s~n"]),
+print_list(Reports, Device, UtcLog) ->
+   Header = {"No", "Type", "Process", "Timestamp"},
+   PidWidth = find_pid_width([Header | Reports], 0) + 1,
+   Format = lists:concat(["~6s~20s ~", PidWidth, "s ~19s~n"]),
    io:format(Device, Format, tuple_to_list(Header)),
-   io:format(Device, Format, ["==", "====", "=======", "====     ===="]),
-   print_list(Device, Reports, Width, DateWidth).
-print_list(_, [], _, _, _) -> true;
-print_list(Device, [H|T], Width, DateWidth) ->
-   print_one_report(Device, H, Width, DateWidth),
-   print_list(Device, T, Width, DateWidth).
+   Format1 = lists:concat(["~6..=s ~20..=s ~", PidWidth, "..=s ~19..=s~n"]),
+   io:format(Device, Format1, ["", "", "", ""]),
+   print_list(Reports, Device, UtcLog, PidWidth).
+print_list([], _, _, _) -> true;
+print_list([H|T], Device, UtcLog, PidWidth) ->
+   print_one_report(H, Device, UtcLog, PidWidth),
+   print_list(T, Device, UtcLog, PidWidth).
 
-find_width([], Width) -> Width;
-find_width([H|T], Width) ->
-   Try = length(element(3, H)),
+find_pid_width([], Width) -> Width;
+find_pid_width([{_, _, Pid, _}|T], Width) ->
+   Try = length(Pid),
    if
-           Try > Width -> find_width(T, Try);
-           true -> find_width(T, Width)
+           Try > Width -> find_pid_width(T, Try);
+           true -> find_pid_width(T, Width)
    end.
 
-find_date_width([], Width) -> Width;
-find_date_width([H|T], Width) ->
-   Try = length(element(4, H)),
-   if
-           Try > Width -> find_date_width(T, Try);
-           true -> find_date_width(T, Width)
-   end.
-
-print_one_report({No, RealType, ShortDescr, Date, _Fname, _FilePos},
-                 Width, DateWidth) ->
-    if
-        WantedType == all ->
-            print_short_descr(No, RealType, ShortDescr, Date, Width, 
-                              DateWidth);
-        WantedType == RealType ->
-            print_short_descr(No, RealType, ShortDescr, Date, Width, 
-                              DateWidth);
-        true -> ok
-    end.
-
-print_short_descr(No, Type, ShortDescr, Date, Width, DateWidth) ->
-    Format = lists:concat(["~4w~20w ~", Width, "s~", DateWidth,"s~n"]),
-    io:format(Format, [No,
-                       Type, 
-                       io_lib:format("~s", [ShortDescr]),
-                       Date]).
+print_one_report({No, RepType, Pid, DateTime}, Device, UtcLog, PidWidth) ->
+    Format = lists:concat(["~6w ~20w ~", PidWidth, "s ~19s~n"]),
+    io:format(Device, Format, [No,
+                       RepType,
+                       Pid, rbx_utils:date_to_str(DateTime, UtcLog)]).
