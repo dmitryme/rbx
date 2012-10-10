@@ -1,34 +1,34 @@
 -module(record_formatter_html).
 
 %% intermodule exports
--export([format/1]).
+-export([format/2]).
 
-format({Date, {error_report, _GL, {Pid, crash_report, CrashReport}}}) ->
-   print_info(format_h("CRASH REPORT", Pid, Date), format_c(CrashReport));
-format({Date, {error_report, _GL, {Pid, supervisor_report, SupReport}}})->
-   print_info(format_h("SUPERVISOR REPORT", Pid, Date), format_s(SupReport));
-format({Date, {error_report, _GL, {Pid, _Type, Report1}}})->
-   print_info(format_h("ERROR REPORT", Pid, Date), [{data, Report1}]);
-format({Date, {info_report, _GL, {Pid, progress, SupProgress}}})->
-   print_info(format_h("PROGRESS REPORT", Pid, Date), format_p(SupProgress));
-format({Date, {info_report, _GL, {Pid, _Type, Report1}}})->
-   print_info(format_h("INFO REPORT", Pid, Date), [{data, Report1}]);
-format({Date, {warning_report, _GL, {Pid, _Type, Report1}}})->
-   print_info(format_h("WARNING REPORT", Pid, Date), [{data, Report1}]);
-format({Date, {error, _GL, {Pid, Format, Args}}})->
-   print_info(format_h("ERROR REPORT", Pid, Date), {text, io_lib:format(Format, Args)});
-format({Date, {info_msg, _GL, {Pid, Format, Args}}})->
-   print_info(format_h("INFO REPORT", Pid, Date), {text, io_lib:format(Format, Args)});
-format({Date, {warning_msg, _GL, {Pid, Format, Args}}})->
-   print_info(format_h("WARNING REPORT", Pid, Date), {text, io_lib:format(Format, Args)});
-format({Date, {Type, _GL, TypeReport}})->
+format({Date, {error_report, _GL, {Pid, crash_report, CrashReport}}}, UtcLog) ->
+   print_info(format_h("CRASH REPORT", Pid, Date, UtcLog), format_c(CrashReport));
+format({Date, {error_report, _GL, {Pid, supervisor_report, SupReport}}}, UtcLog)->
+   print_info(format_h("SUPERVISOR REPORT", Pid, Date, UtcLog), format_s(SupReport));
+format({Date, {error_report, _GL, {Pid, _Type, Report1}}}, UtcLog)->
+   print_info(format_h("ERROR REPORT", Pid, Date, UtcLog), [{data, Report1}]);
+format({Date, {info_report, _GL, {Pid, progress, SupProgress}}}, UtcLog)->
+   print_info(format_h("PROGRESS REPORT", Pid, Date, UtcLog), format_p(SupProgress));
+format({Date, {info_report, _GL, {Pid, _Type, Report1}}}, UtcLog)->
+   print_info(format_h("INFO REPORT", Pid, Date, UtcLog), [{data, Report1}]);
+format({Date, {warning_report, _GL, {Pid, _Type, Report1}}}, UtcLog)->
+   print_info(format_h("WARNING REPORT", Pid, Date, UtcLog), [{data, Report1}]);
+format({Date, {error, _GL, {Pid, Format, Args}}}, UtcLog)->
+   print_info(format_h("ERROR REPORT", Pid, Date, UtcLog), {text, io_lib:format(Format, Args)});
+format({Date, {info_msg, _GL, {Pid, Format, Args}}}, UtcLog)->
+   print_info(format_h("INFO REPORT", Pid, Date, UtcLog), {text, io_lib:format(Format, Args)});
+format({Date, {warning_msg, _GL, {Pid, Format, Args}}}, UtcLog)->
+   print_info(format_h("WARNING REPORT", Pid, Date, UtcLog), {text, io_lib:format(Format, Args)});
+format({Date, {Type, _GL, TypeReport}}, UtcLog)->
     io_lib:format("~nInfo type <~w> ~s~n~p",
-         [Type, rbx_utils:date_to_str(Date, true), TypeReport]);
-format(Report) ->
+         [Type, rbx_utils:date_to_str(Date, UtcLog), TypeReport]);
+format(Report, UtcLog) ->
    io_lib:format("Unknown report type: ~s", [Report]).
 
-format_h(Header, Pid, Date) ->
-   io_lib:format("<tr><th>~s</th><th>~w</th><th>~s</th></tr>", [Header, Pid, rbx_utils:date_to_str(Date, true)]).
+format_h(Header, Pid, Date, UtcLog) ->
+   io_lib:format("<tr><th>~s</th><th>~w</th><th>~s</th></tr>", [Header, Pid, rbx_utils:date_to_str(Date, UtcLog)]).
 
 %%-----------------------------------------------------------------
 %% Crash report
