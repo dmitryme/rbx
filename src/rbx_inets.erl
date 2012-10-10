@@ -10,7 +10,7 @@
 
 -export([do/1]).
 
--record(state, {document_root}).
+-record(state, {document_root, utc_log = false}).
 
 start() -> start([]).
 start(Options) ->
@@ -25,7 +25,7 @@ init(Options) ->
    inets:start(),
    DocRoot = filename:nativename(rbx_utils:get_option(document_root, Options, ".")),
    {ok, Pid} = inets:start(httpd, [
-      {port, get_option(inets_port, Options, 8000)},
+      {port, rbx_utils:get_option(inets_port, Options, 8000)},
       {server_name, "rbx"},
       {server_root, "."},
       {document_root, DocRoot},
@@ -33,15 +33,19 @@ init(Options) ->
       {mime_types, [{"css", "text/css"}, {"js", "text/javascript"}, {"html", "text/html"}]}
    ]),
    link(Pid),
-   {ok, #state{document_root = DocRoot}}.
+   UtcLog = case application:get_env(sasl, utc_log) of
+      {ok, true} -> true;
+      _ -> false
+   end,
+   {ok, #state{document_root = DocRoot, utc_log = UtcLog}}.
 
 handle_call(get_types, _, State) ->
    {reply, rbx:get_types(), State};
 handle_call({get_records, Filters}, _From, State) ->
    Records = rbx:list(Filters),
-   {reply, Records, State};
+   {reply, {Records, State#state.utc_log}, State};
 handle_call({get_record, RecNum}, _From, State) ->
-   FmtRecord = record_formatter_html:format(rbx:show(RecNum)),
+   FmtRecord = record_formatter_html:format(rbx:show(RecNum), State#state.utc_log),
    {reply, FmtRecord, State};
 handle_call(get_doc_root, _From, State) ->
    {reply, State#state.document_root, State}.
@@ -107,31 +111,31 @@ get_records(Query) when is_list(Query) ->
    get_records(Term);
 get_records({Filters, Page, RecOnPage}) ->
    AllTypes = gen_server:call(rbx_inets, get_types),
-   Records = gen_server:call(rbx_inets, {get_records, Filters}),
-   lists:concat(["{\"types\":", list_to_json(AllTypes, fun(T) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
+   {Records, UtcLog} = gen_server:call(rbx_inets, {get_records, Filters}),
+   lists:concat(["{\"types\":", list_to_json(AllTypes, UtcLog, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
                   "\"records_count\":", length(Records), ',',
-                 "\"records\":", get_records(Records, Page, RecOnPage), '}']).
-get_records(Records, Page, RecOnPage) ->
+                 "\"records\":", get_records(Records, UtcLog, Page, RecOnPage), '}']).
+get_records(Records, UtcLog, Page, RecOnPage) ->
    StartFrom = lists:nthtail((Page - 1) * RecOnPage, Records),
    PageRecords = lists:sublist(StartFrom, min(length(StartFrom), RecOnPage)),
-   list_to_json(PageRecords, fun record_to_json/1).
+   list_to_json(PageRecords, UtcLog, fun record_to_json/2).
 
 get_record(RecNum) ->
    gen_server:call(rbx_inets, {get_record, RecNum}).
 
-record_to_json({No, RepType, Pid, Date}) ->
+record_to_json({No, RepType, Pid, Date}, UtcLog) ->
    lists:concat(["{\"no\":\"", No, "\",",
    "\"type\":\"", RepType, "\",",
    "\"pid\":\"", Pid, "\",",
-   "\"date\":\"", rbx_utils:date_to_str(Date, true), "\"}"]).
+   "\"date\":\"", rbx_utils:date_to_str(Date, UtcLog), "\"}"]).
 
-list_to_json(List, Fun) ->
-   list_to_json(List, Fun, "[").
-list_to_json([], _Fun, Acc) ->
+list_to_json(List, UtcLog, Fun) ->
+   list_to_json(List, UtcLog, Fun, "[").
+list_to_json([], _UtcLog, _Fun, Acc) ->
    Acc ++ "]";
-list_to_json([Last], Fun, "[") ->
-   lists:concat(["[", Fun(Last), "]"]);
-list_to_json([Last], Fun, Acc) ->
-   lists:concat([Acc, Fun(Last), "]"]);
-list_to_json([H|T], Fun, Acc) ->
-   list_to_json(T, Fun, lists:concat([Acc, Fun(H), ","])).
+list_to_json([Last], UtcLog, Fun, "[") ->
+   lists:concat(["[", Fun(Last, UtcLog), "]"]);
+list_to_json([Last], UtcLog, Fun, Acc) ->
+   lists:concat([Acc, Fun(Last, UtcLog), "]"]);
+list_to_json([H|T], UtcLog, Fun, Acc) ->
+   list_to_json(T, UtcLog, Fun, lists:concat([Acc, Fun(H, UtcLog), ","])).
