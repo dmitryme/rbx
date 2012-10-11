@@ -23,14 +23,17 @@ start(Options) ->
 start_link(Options) ->
    gen_server:start_link({local, rbx_cons}, ?MODULE, Options, []).
 
+rescan() ->
+   rescan(all).
+
+rescan(MaxRecords) ->
+   gen_server:cast(rbx_cons, {rescan, MaxRecords}).
+
 list() ->
    list([]).
 
 list(Filter) ->
    gen_server:call(rbx_cons, {list, Filter}).
-
-rescan(MaxRecords) ->
-   gen_server:call(rbx_cons, {rescan, MaxRecords}).
 
 show() ->
    show(all).
