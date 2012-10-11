@@ -7,9 +7,9 @@
          handle_cast/2, handle_info/2, code_change/3]).
 
 %% public exports
--export([list/0, list/1, rescan/1, show/0, show/1, start_log/1, stop_log/0, attach/1, detach/0]).
+-export([list/0, list/1, rescan/0, rescan/1, show/0, show/1, start_log/1, stop_log/0, attach/1, detach/0]).
 
--record(state, {device, utc_log}).
+-record(state, {device, node, utc_log}).
 
 %======================================================================================================================
 %  gen_server interface functions
@@ -61,23 +61,23 @@ init(Options) ->
       {ok, true} -> true;
       _ -> false
    end,
-   {ok, #state{device = Device, utc_log = UtcLog}}.
+   {ok, #state{device = Device, node = node(), utc_log = UtcLog}}.
 
 handle_call({list, Filters}, _From, State) ->
-   Reports = rbx:list(Filters),
+   Reports = rbx:list(State#state.node, Filters),
    print_list(Reports, State#state.device, State#state.utc_log),
    {reply, ok, State};
 handle_call({show, Number}, _From, State) when is_number(Number) ->
-   Report = rbx:show(Number),
+   Report = rbx:show(State#state.node, Number),
    record_formatter_cons:format(State#state.device, State#state.utc_log, Report),
    {reply, ok, State};
 handle_call({show, NumList}, _From, State) when is_list(NumList) ->
-   Reports = rbx:show(NumList),
+   Reports = rbx:show(State#state.node, NumList),
    Fun = fun(Report) -> record_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
    lists:foreach(Fun, Reports),
    {reply, ok, State};
 handle_call({show, all}, _From, State) ->
-   Reports = rbx:show(all),
+   Reports = rbx:show(State#state.node, all),
    Fun = fun(Report) -> record_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
    lists:foreach(Fun, Reports),
    {reply, ok, State};
@@ -85,7 +85,7 @@ handle_call(_, _, State) ->
    {reply, ok, State}.
 
 handle_cast({rescan, MaxRecords}, State) ->
-   rbx:rescan(MaxRecords),
+   rbx:rescan(State#state.node, MaxRecords),
    {noreply, State};
 handle_cast({start_log, Filename}, State) ->
    NewDevice = open_log_file(Filename),

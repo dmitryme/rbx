@@ -24,7 +24,7 @@
 -export([start/0, start/1, start_link/1, init/1, terminate/2, handle_call/3,
          handle_cast/2, handle_info/2, code_change/3]).
 
--export([list/0, list/1, rescan/1, show/1, get_types/0]).
+-export([list/1, list/2, rescan/2, show/2, get_types/1]).
 
 -define(def_max, 100).
 
@@ -42,32 +42,32 @@
 %%-----------------------------------------------------------------
 %% public interface.
 %%-----------------------------------------------------------------
--spec list() -> list_result().
-list() ->
-   list([]).
+-spec list(node()) -> list_result().
+list(Node) ->
+   list(Node, []).
 
--spec list(filters()) -> list_result().
-list(Filter)
+-spec list(node(), filters()) -> list_result().
+list(_Node, Filter)
       when is_list(Filter) =/= true ->
    {error, wrong_args};
-list(Filter) ->
-   gen_server:call(rbx, {list, Filter}, infinity).
+list(Node, Filter) ->
+   gen_server:call({rbx, Node}, {list, Filter}, infinity).
 
--spec rescan(pos_integer()) -> filters() | {'error', term()}.
-rescan(Max) ->
-   gen_server:call(rbx, {rescan, Max}, infinity).
+-spec rescan(node(), pos_integer()) -> filters() | {'error', term()}.
+rescan(Node, Max) ->
+   gen_server:call({rbx, Node}, {rescan, Max}, infinity).
 
--spec show(all | pos_integer() | [pos_integer()]) -> term().
-show(Number) when is_integer(Number) ->
-   gen_server:call(rbx, {show_number, Number}, infinity);
-show(NumList) when is_list(NumList) ->
-   gen_server:call(rbx, {show_number, NumList}, infinity);
-show(all) ->
-   gen_server:call(rbx, {show_number, all}, infinity).
+-spec show(node(), all | pos_integer() | [pos_integer()]) -> term().
+show(Node, Number) when is_integer(Number) ->
+   gen_server:call({rbx, Node}, {show_number, Number}, infinity);
+show(Node, NumList) when is_list(NumList) ->
+   gen_server:call({rbx, Node}, {show_number, NumList}, infinity);
+show(Node, all) ->
+   gen_server:call({rbx, Node}, {show_number, all}, infinity).
 
--spec get_types() -> filters() | {'error', term()}.
-get_types() ->
-   gen_server:call(rbx, get_types, infinity).
+-spec get_types(node()) -> filters() | {'error', term()}.
+get_types(Node) ->
+   gen_server:call({rbx, Node}, get_types, infinity).
 
 %%-----------------------------------------------------------------
 %% gen_server interface functions.

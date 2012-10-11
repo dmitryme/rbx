@@ -10,7 +10,7 @@
 
 -export([do/1]).
 
--record(state, {document_root, utc_log = false}).
+-record(state, {document_root, node, utc_log = false}).
 
 start() -> start([]).
 start(Options) ->
@@ -37,21 +37,21 @@ init(Options) ->
       {ok, true} -> true;
       _ -> false
    end,
-   {ok, #state{document_root = DocRoot, utc_log = UtcLog}}.
+   {ok, #state{document_root = DocRoot, node = node(), utc_log = UtcLog}}.
 
 handle_call(get_types, _, State) ->
-   {reply, rbx:get_types(), State};
+   {reply, rbx:get_types(State#state.node), State};
 handle_call({get_records, Filters}, _From, State) ->
-   Records = rbx:list(Filters),
+   Records = rbx:list(State#state.node, Filters),
    {reply, {Records, State#state.utc_log}, State};
 handle_call({get_record, RecNum}, _From, State) ->
-   FmtRecord = record_formatter_html:format(rbx:show(RecNum), State#state.utc_log),
+   FmtRecord = record_formatter_html:format(rbx:show(State#state.node, RecNum), State#state.utc_log),
    {reply, FmtRecord, State};
 handle_call(get_doc_root, _From, State) ->
    {reply, State#state.document_root, State}.
 
 handle_cast({rescan, MaxRecords}, State) ->
-   rbx:rescan(MaxRecords),
+   rbx:rescan(State#state.node, MaxRecords),
    {noreply, State};
 handle_cast(_Msg, State) ->
    {noreply, State}.
