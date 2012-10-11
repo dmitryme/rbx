@@ -3,6 +3,8 @@
 %% intermodule exports
 -export([format/3]).
 
+-define(LINE_W, 79).
+
 format(Device, UtcLog, {Date, {error_report, _GL, {Pid, crash_report, CrashReport}}}) ->
    print_info(Device, format_h("CRASH REPORT", Pid, Date, UtcLog), format_c(CrashReport));
 format(Device, UtcLog, {Date, {error_report, _GL, {Pid, supervisor_report, SupReport}}})->
@@ -67,7 +69,8 @@ format_p(Data) ->
    [{data, Data}].
 
 print_info(Device, Header, Report) ->
-   io:format(Device, "~s~n~79..=s~n~s~n", [Header, "", print_report(Report)]).
+   Format =lists:concat(["~s~n~", ?LINE_W, "..=s~n~s~n"]),
+   io:format(Device, Format, [Header, "", print_report(Report)]).
 
 print_report([]) ->
    [];
@@ -75,8 +78,6 @@ print_report({text, Text}) ->
    lists:flatten(Text);
 print_report([{data, Data}|T]) ->
    [print_data(Data), print_report(T)];
-print_report([{table, Table}|T]) ->
-   [print_table(Table), print_report(T)];
 print_report([{items, Items}|T]) ->
    [print_items(Items), print_report(T)];
 print_report([{newline, N}|T]) ->
@@ -88,21 +89,30 @@ print_data([]) -> [];
 print_data([{Key, Value}|T]) ->
    [print_one_line(Key, Value) | print_data(T)];
 print_data([Value|T]) ->
-   StrData = io_lib:format("~s", [term_to_string(Value)]),
+   StrData = io_lib:format("~s~n", [term_to_string(Value)]),
    [StrData, print_data(T)].
 
 print_items({Name, Items}) ->
    print_items(Name, Items).
-
-print_table({TableName, ColumnNames, Columns}) ->
-   print_table(TableName, ColumnNames, Columns).
 
 print_newlines(0) -> [];
 print_newlines(N) when N > 0 ->
    [io_lib:format("~n"), print_newlines(N-1)].
 
 print_one_line(Key, Value) ->
-   io_lib:format("~-25s~54s~n", [term_to_string(Key), term_to_string(Value)]).
+   StrKey = term_to_string(Key),
+   KeyLen = lists:min([length(StrKey), ?LINE_W]),
+   ValueLen = ?LINE_W - KeyLen,
+   Try = term_to_string(Value),
+   Length = length(Try),
+   if
+	   Length < ValueLen ->
+         Format1 = lists:concat(["~-", KeyLen, "s~", ValueLen, "s~n"]),
+	      io_lib:format(Format1, [StrKey, Try]);
+	   true ->
+	      Format2 = lists:concat(["~-", KeyLen, "s~n         ~", ?LINE_W, ".9p~n"]),
+	      io_lib:format(Format2, [StrKey, Value])
+   end.
 
 term_to_string(Value) ->
    lists:flatten(io_lib:format(get_format(Value), [Value])).
@@ -122,23 +132,3 @@ print_items(Name, Items) ->
 print_item_elements([]) -> [];
 print_item_elements([{Key, Value}|T]) ->
    [print_one_line(Key, Value), print_item_elements(T)].
-
-%%-----------------------------------------------------------------
-%% Table handling
-%%-----------------------------------------------------------------
-print_table(TableName, _TupleOfColumnNames, []) ->
-   "<table><tr><td>Table:&nbsp;" ++ TableName ++ "</td></tr><tr><td>&lt;empty table&gt;</td></tr></table>";
-print_table(TableName, TupleOfColumnNames, ListOfTuples)
-                when is_list(ListOfTuples), is_tuple(TupleOfColumnNames) ->
-   Table = "<table><tr><td>Table:&nbsp;" ++ TableName ++ "</td></tr>",
-   ListOfColumnNames = tuple_to_list(TupleOfColumnNames),
-   Header = lists:flatten(["<tr>", lists:foldr(fun(ColName, Acc) -> ["<th>", ColName, "</th>", Acc] end,
-      [], ListOfColumnNames), "</tr>"]),
-	ListOfLists = lists:map(fun(Tuple) -> tuple_to_list(Tuple) end, ListOfTuples),
-   Body = lists:foldr(fun(Row, Acc) -> [print_row(Row), Acc] end, [], ListOfLists),
-   lists:flatten([Table, Header, Body, "</table>"]).
-
-print_row(Row) ->
-   lists:flatten(["<tr>", lists:foldl(fun(ColVal, Acc) ->
-                           ["<td>", term_to_string(ColVal), "</td>", Acc]
-            end, [], Row), "</tr>"]).
