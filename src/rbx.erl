@@ -57,9 +57,13 @@ list(Filter) ->
 rescan(Max) ->
    gen_server:call(rbx, {rescan, Max}, infinity).
 
--spec show(all | pos_integer()) -> term().
+-spec show(all | pos_integer() | [pos_integer()]) -> term().
 show(Number) when is_integer(Number) ->
-   gen_server:call(rbx, {show_number, Number}, infinity).
+   gen_server:call(rbx, {show_number, Number}, infinity);
+show(NumList) when is_list(NumList) ->
+   gen_server:call(rbx, {show_number, NumList}, infinity);
+show(all) ->
+   gen_server:call(rbx, {show_number, all}, infinity).
 
 -spec get_types() -> filters() | {'error', term()}.
 get_types() ->
@@ -101,6 +105,19 @@ handle_call({list, Filters}, _From, State) ->
       _:Error ->
          error_logger:error_msg(
             "rbx::list call failed: ~p", [erlang:get_stacktrace()]),
+         {reply, {error, Error}, State}
+   end;
+handle_call({show_number, NumList}, _From, State = #state{dir = Dir, data = Data}) when is_list(NumList) == true ->
+   SorterNumList = lists:sort(NumList),
+   try print_report_by_num_list(Dir, Data, SorterNumList) of
+      Res ->
+         {reply, Res, State}
+   catch
+      throw:Error ->
+         {reply, {error, Error}, State};
+      _:Error ->
+         error_logger:error_msg(
+            "rbx::show_number call failed: ~p", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end;
 handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}) ->
@@ -384,6 +401,11 @@ print_list(Types, Dir, [Report = {_, RealType, _, Date, _, _}|Tail], Filters) ->
 
 print_short_descr({No, Type, ShortDescr, Date, _, _}) ->
    {No, Type, ShortDescr, Date}.
+
+print_report_by_num_list(_Dir, _Data, []) ->
+   [];
+print_report_by_num_list(Dir, Data, [Num|Tail]) ->
+   [print_report_by_num(Dir, Data, Num) | print_report_by_num_list(Dir, Data, Tail)].
 
 print_report_by_num(Dir, Data, Number) ->
    print_report(Dir, Data, Number).
