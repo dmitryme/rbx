@@ -44,6 +44,12 @@ table.rdisplay_data {
    background-color: #F1F1F1;
 }
 
+.records th.show_col{
+   width: 50px;
+   text-align: center;
+   background-color: #999797;
+}
+
 .records th.no_col{
    width: 50px;
    text-align: right;
@@ -70,6 +76,10 @@ table.rdisplay_data {
 
 .records td{
    text-align: right;
+}
+
+.records td.show_col{
+   text-align: center;
 }
 
 .records tr:hover

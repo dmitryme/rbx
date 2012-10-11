@@ -67,9 +67,19 @@ handle_call({list, Filters}, _From, State) ->
    Reports = rbx:list(Filters),
    print_list(Reports, State#state.device, State#state.utc_log),
    {reply, ok, State};
-handle_call({show, Number}, _From, State) ->
+handle_call({show, Number}, _From, State) when is_number(Number) ->
    Report = rbx:show(Number),
    record_formatter_cons:format(State#state.device, State#state.utc_log, Report),
+   {reply, ok, State};
+handle_call({show, NumList}, _From, State) when is_list(NumList) ->
+   Reports = rbx:show(NumList),
+   Fun = fun(Report) -> record_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
+   lists:foreach(Fun, Reports),
+   {reply, ok, State};
+handle_call({show, all}, _From, State) ->
+   Reports = rbx:show(all),
+   Fun = fun(Report) -> record_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
+   lists:foreach(Fun, Reports),
    {reply, ok, State};
 handle_call(_, _, State) ->
    {reply, ok, State}.

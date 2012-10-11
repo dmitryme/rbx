@@ -107,7 +107,7 @@ handle_call({list, Filters}, _From, State) ->
             "rbx::list call failed: ~p", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end;
-handle_call({show_number, NumList}, _From, State = #state{dir = Dir, data = Data}) when is_list(NumList) == true ->
+handle_call({show_number, NumList}, _From, State = #state{dir = Dir, data = Data}) when is_list(NumList) ->
    SorterNumList = lists:sort(NumList),
    try print_report_by_num_list(Dir, Data, SorterNumList) of
       Res ->
@@ -120,7 +120,7 @@ handle_call({show_number, NumList}, _From, State = #state{dir = Dir, data = Data
             "rbx::show_number call failed: ~p", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
    end;
-handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}) ->
+handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}) when is_number(Number) ->
    try print_report_by_num(Dir, Data, Number) of
       Res ->
          {reply, Res, State}
@@ -131,7 +131,21 @@ handle_call({show_number, Number}, _From, State = #state{dir = Dir, data = Data}
          error_logger:error_msg(
             "rbx::show_number call failed: ~p", [erlang:get_stacktrace()]),
          {reply, {error, Error}, State}
-   end.
+   end;
+handle_call({show_number, all}, _From, State = #state{dir = Dir, data = Data}) ->
+   try print_all_reports(Dir, Data) of
+      Res ->
+         {reply, Res, State}
+   catch
+      throw:Error ->
+         {reply, {error, Error}, State};
+      _:Error ->
+         error_logger:error_msg(
+            "rbx::show_number call failed: ~p", [erlang:get_stacktrace()]),
+         {reply, {error, Error}, State}
+   end;
+handle_call(Msg, _From, State) ->
+   {reply, {error, {unknown_call, Msg}}, State}.
 
 terminate(_Reason, #state{}) ->
    ok.
@@ -402,9 +416,20 @@ print_list(Types, Dir, [Report = {_, RealType, _, Date, _, _}|Tail], Filters) ->
 print_short_descr({No, Type, ShortDescr, Date, _, _}) ->
    {No, Type, ShortDescr, Date}.
 
+print_all_reports(_Dir, []) ->
+   [];
+print_all_reports(Dir, [{_No, _Type, _Descr, _Date, Fname, FilePosition} | Rest]) ->
+   FileName = lists:concat([Dir, Fname]),
+   case file:open(FileName, [read]) of
+      {ok, Fd} ->
+         [read_rep(Fd, FilePosition) | print_all_reports(Dir, Rest)];
+      _ ->
+         throw(lists:flatten(io_lib:format("can't open file ~p", [Fname])))
+   end.
+
 print_report_by_num_list(_Dir, _Data, []) ->
    [];
-print_report_by_num_list(Dir, Data, [Num|Tail]) ->
+print_report_by_num_list(Dir, Data, [Num | Tail]) ->
    [print_report_by_num(Dir, Data, Num) | print_report_by_num_list(Dir, Data, Tail)].
 
 print_report_by_num(Dir, Data, Number) ->

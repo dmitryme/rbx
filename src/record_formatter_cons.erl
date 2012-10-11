@@ -97,7 +97,7 @@ print_items({Name, Items}) ->
 
 print_newlines(0) -> [];
 print_newlines(N) when N > 0 ->
-   [io_lib:format("~n"), print_newlines(N-1)].
+   [io_lib:format("~n", []), print_newlines(N-1)].
 
 print_one_line(Key, Value) ->
    StrKey = term_to_string(Key),

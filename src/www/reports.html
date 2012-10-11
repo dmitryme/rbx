@@ -24,7 +24,7 @@
       function apply_records(records)
       {
          $("#lv_records").children().remove();
-         $("#lv_records").append("<tr><th class=\"no_col\">No</th><th class=\"type_col\">Type</th><th class=\"pid_col\">Pid</th><th class=\"date_col\">Date</th></tr>");
+         $("#lv_records").append("<tr><th class=\"show_col\">Show</th><th class=\"no_col\">No</th><th class=\"type_col\">Type</th><th class=\"pid_col\">Pid</th><th class=\"date_col\">Date</th></tr>");
          $.each(records, function(i, rec){
             var recClass = "";
             if (rec.type == "error" || rec.type == "error_report" || rec.type == "error_msg" || rec.type == "crash_report")
@@ -43,7 +43,7 @@
             {
                recClass = "info";
             }
-            $("#lv_records").append($("<tr class=\"" + recClass + "\"><td>" + rec.no + "</td><td>" + rec.type + "</td><td>" + rec.pid + "</td><td>"
+            $("#lv_records").append($("<tr class=\"" + recClass + "\"><td class=\"show_col\"><input type=\"checkbox\"/></td><td>" + rec.no + "</td><td>" + rec.type + "</td><td>" + rec.pid + "</td><td>"
                   + rec.date + "</td></tr>").click(function()
             {
                $.post("/get_record", rec.no, function(res){
