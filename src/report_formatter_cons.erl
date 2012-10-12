@@ -1,4 +1,4 @@
--module(record_formatter_cons).
+-module(report_formatter_cons).
 
 %% intermodule exports
 -export([format/3]).
