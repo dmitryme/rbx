@@ -47,9 +47,11 @@ start_log(Filename) ->
 stop_log() ->
    gen_server:cast(rbx_cons, stop_log).
 
-attach(_Node) -> ok.
+attach(Node) ->
+   gen_server:call(rbx_cons, {attach, Node}).
 
-detach() -> ok.
+detach() ->
+   gen_server:cast(rbx_cons, detach).
 
 %=======================================================================================================================
 %  gen_server interface functions
@@ -69,18 +71,34 @@ handle_call({list, Filters}, _From, State) ->
    {reply, ok, State};
 handle_call({show, Number}, _From, State) when is_number(Number) ->
    Report = rbx:show(State#state.node, Number),
-   record_formatter_cons:format(State#state.device, State#state.utc_log, Report),
+   report_formatter_cons:format(State#state.device, State#state.utc_log, Report),
    {reply, ok, State};
 handle_call({show, NumList}, _From, State) when is_list(NumList) ->
    Reports = rbx:show(State#state.node, NumList),
-   Fun = fun(Report) -> record_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
+   Fun = fun(Report) -> report_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
    lists:foreach(Fun, Reports),
    {reply, ok, State};
 handle_call({show, all}, _From, State) ->
    Reports = rbx:show(State#state.node, all),
-   Fun = fun(Report) -> record_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
+   Fun = fun(Report) -> report_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
    lists:foreach(Fun, Reports),
    {reply, ok, State};
+handle_call({attach, Node}, _From, State) ->
+   case net_adm:ping(Node) of
+      pong ->
+         Res = rpc:call(Node, erlang, whereis, [rbx]),
+         if
+            is_pid(Res) ->
+               io:format("Attached to node ~p~n", [Node]),
+               {reply, ok, State#state{node = Node}};
+            true ->
+               io:format("rbx not started on ~p~n", [Node]),
+               {reply, error, State}
+         end;
+      pang ->
+         io:format("Handshake with ~p failed.~n", [Node]),
+         {reply, error, State}
+   end;
 handle_call(_, _, State) ->
    {reply, ok, State}.
 
@@ -93,6 +111,8 @@ handle_cast({start_log, Filename}, State) ->
 handle_cast(stop_log, State) ->
    close_device(State#state.device),
    {noreply, State#state{device = standard_io}};
+handle_cast(detach, State) ->
+   {noreply, State#state{node = node()}};
 handle_cast(_Msg, State) ->
    {noreply, State}.
 
