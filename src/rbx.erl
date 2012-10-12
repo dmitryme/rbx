@@ -108,7 +108,7 @@ handle_call({list, Filters}, _From, State) ->
          {reply, {error, Error}, State}
    end;
 handle_call({show_number, NumList}, _From, State = #state{dir = Dir, data = Data}) when is_list(NumList) ->
-   SorterNumList = lists:sort(NumList),
+   SorterNumList = lists:usort(fun(A, B) -> A > B end, NumList),
    try print_report_by_num_list(Dir, Data, SorterNumList) of
       Res ->
          {reply, Res, State}
