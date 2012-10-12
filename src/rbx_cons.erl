@@ -26,8 +26,8 @@ start_link(Options) ->
 rescan() ->
    rescan(all).
 
-rescan(MaxRecords) ->
-   gen_server:cast(rbx_cons, {rescan, MaxRecords}).
+rescan(MaxReports) ->
+   gen_server:cast(rbx_cons, {rescan, MaxReports}).
 
 list() ->
    list([]).
@@ -102,8 +102,8 @@ handle_call({attach, Node}, _From, State) ->
 handle_call(_, _, State) ->
    {reply, ok, State}.
 
-handle_cast({rescan, MaxRecords}, State) ->
-   rbx:rescan(State#state.node, MaxRecords),
+handle_cast({rescan, MaxReports}, State) ->
+   rbx:rescan(State#state.node, MaxReports),
    {noreply, State};
 handle_cast({start_log, Filename}, State) ->
    NewDevice = open_log_file(Filename),
