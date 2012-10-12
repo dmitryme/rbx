@@ -66,7 +66,8 @@ format_p(Data) ->
    [{data, Data}].
 
 print_info(Header, Report) ->
-   "<table class='rdisplay_header'>" ++ Header ++ "</table><br/><table class='rdisplay_data'>" ++ print_report(Report) ++ "</table>".
+   "<table class='rdisplay_header'>" ++ Header ++ "</table><table class='rdisplay_data'>" ++ print_report(Report) ++
+   "</table><br>".
 
 print_report([]) ->
    [];
@@ -74,8 +75,6 @@ print_report({text, Text}) ->
    "<tr><td colspan='2'>" ++ replace_to_html_entities(lists:flatten(Text)) ++ "</td></tr>";
 print_report([{data, Data}|T]) ->
    [print_data(Data), print_report(T)];
-print_report([{table, Table}|T]) ->
-   [print_table(Table), print_report(T)];
 print_report([{items, Items}|T]) ->
    [print_items(Items), print_report(T)];
 print_report([{newline, N}|T]) ->
@@ -92,9 +91,6 @@ print_data([Value|T]) ->
 
 print_items({Name, Items}) ->
    print_items(Name, Items).
-
-print_table({TableName, ColumnNames, Columns}) ->
-   print_table(TableName, ColumnNames, Columns).
 
 print_newlines(0) -> [];
 print_newlines(N) when N > 0 ->
@@ -122,26 +118,6 @@ print_items(Name, Items) ->
 print_item_elements([]) -> [];
 print_item_elements([{Key, Value}|T]) ->
    [print_one_line(Key, Value), print_item_elements(T)].
-
-%%-----------------------------------------------------------------
-%% Table handling
-%%-----------------------------------------------------------------
-print_table(TableName, _TupleOfColumnNames, []) ->
-   "<table><tr><td>Table:&nbsp;" ++ TableName ++ "</td></tr><tr><td>&lt;empty table&gt;</td></tr></table>";
-print_table(TableName, TupleOfColumnNames, ListOfTuples)
-                when is_list(ListOfTuples), is_tuple(TupleOfColumnNames) ->
-   Table = "<table><tr><td>Table:&nbsp;" ++ TableName ++ "</td></tr>",
-   ListOfColumnNames = tuple_to_list(TupleOfColumnNames),
-   Header = lists:flatten(["<tr>", lists:foldr(fun(ColName, Acc) -> ["<th>", ColName, "</th>", Acc] end,
-      [], ListOfColumnNames), "</tr>"]),
-	ListOfLists = lists:map(fun(Tuple) -> tuple_to_list(Tuple) end, ListOfTuples),
-   Body = lists:foldr(fun(Row, Acc) -> [print_row(Row), Acc] end, [], ListOfLists),
-   lists:flatten([Table, Header, Body, "</table>"]).
-
-print_row(Row) ->
-   lists:flatten(["<tr>", lists:foldl(fun(ColVal, Acc) ->
-                           ["<td>", term_to_string(ColVal), "</td>", Acc]
-            end, [], Row), "</tr>"]).
 
 replace_to_html_entities(Str) ->
    lists:foldr(fun(32, Acc) ->
