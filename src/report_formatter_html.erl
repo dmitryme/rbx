@@ -1,4 +1,4 @@
--module(record_formatter_html).
+-module(report_formatter_html).
 
 %% intermodule exports
 -export([format/2]).
