@@ -41,12 +41,12 @@ init(Options) ->
 
 handle_call(get_types, _, State) ->
    {reply, rbx:get_types(State#state.node), State};
-handle_call({get_records, Filters}, _From, State) ->
+handle_call({get_reports, Filters}, _From, State) ->
    Records = rbx:list(State#state.node, Filters),
    {reply, {Records, State#state.utc_log}, State};
-handle_call({get_sel_records, RecList}, _From, State) ->
+handle_call({get_sel_reports, RecList}, _From, State) ->
    Records = rbx:show(State#state.node, RecList),
-   FmtRecords = lists:foldr(fun(R, Acc) -> [record_formatter_html:format(R, State#state.utc_log) | Acc] end, [], Records),
+   FmtRecords = lists:foldr(fun(R, Acc) -> [report_formatter_html:format(R, State#state.utc_log) | Acc] end, [], Records),
    {reply, FmtRecords, State};
 handle_call(get_doc_root, _From, State) ->
    {reply, State#state.document_root, State}.
@@ -69,11 +69,11 @@ code_change(_OldVsn, State, _Extra) ->
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/rescan" ->
    Response = rescan(Query),
    {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_records" ->
-   Response = get_records(Query),
+do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_reports" ->
+   Response = get_reports(Query),
    {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri, entity_body = RecList}) when Uri == "/get_sel_records" ->
-   Response = get_sel_records(RecList),
+do(#mod{request_uri = Uri, entity_body = RecList}) when Uri == "/get_sel_reports" ->
+   Response = get_sel_reports(RecList),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri})  when Uri == "/" ->
    {ok, Bin} = file:read_file(get_doc_root() ++ "/www/index.html"),
@@ -104,29 +104,29 @@ rescan(Query) when is_list(Query) ->
    rescan(Term);
 rescan({MaxRecords, RecOnPage, Filters}) ->
    gen_server:cast(rbx_inets, {rescan, MaxRecords}),
-   get_records({Filters, 1, RecOnPage}).
+   get_reports({Filters, 1, RecOnPage}).
 
-get_records(Query) when is_list(Query) ->
+get_reports(Query) when is_list(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),
    {ok, Term} = erl_parse:parse_term(Tokens),
-   get_records(Term);
-get_records({Filters, Page, RecOnPage}) ->
+   get_reports(Term);
+get_reports({Filters, Page, RecOnPage}) ->
    AllTypes = gen_server:call(rbx_inets, get_types),
-   {Records, UtcLog} = gen_server:call(rbx_inets, {get_records, Filters}),
+   {Records, UtcLog} = gen_server:call(rbx_inets, {get_reports, Filters}),
    lists:concat(["{\"types\":", list_to_json(AllTypes, UtcLog, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
-                  "\"records_count\":", length(Records), ',',
-                 "\"records\":", get_records(Records, UtcLog, Page, RecOnPage), '}']).
-get_records(Records, UtcLog, Page, RecOnPage) ->
+                  "\"reports_count\":", length(Records), ',',
+                 "\"reports\":", get_reports(Records, UtcLog, Page, RecOnPage), '}']).
+get_reports(Records, UtcLog, Page, RecOnPage) ->
    StartFrom = lists:nthtail((Page - 1) * RecOnPage, Records),
    PageRecords = lists:sublist(StartFrom, min(length(StartFrom), RecOnPage)),
-   list_to_json(PageRecords, UtcLog, fun record_to_json/2).
+   list_to_json(PageRecords, UtcLog, fun report_to_json/2).
 
-get_sel_records(Query) when is_list(Query) ->
+get_sel_reports(Query) when is_list(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),
    {ok, Term} = erl_parse:parse_term(Tokens),
-   gen_server:call(rbx_inets, {get_sel_records, Term}).
+   gen_server:call(rbx_inets, {get_sel_reports, Term}).
 
-record_to_json({No, RepType, Pid, Date}, UtcLog) ->
+report_to_json({No, RepType, Pid, Date}, UtcLog) ->
    lists:concat(["{\"no\":\"", No, "\",",
    "\"type\":\"", RepType, "\",",
    "\"pid\":\"", Pid, "\",",
