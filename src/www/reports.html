@@ -8,7 +8,7 @@
       <script type="text/javascript">
       function handlePaginationClick(new_page_index, pagination_container)
       {
-         get_records(new_page_index + 1, false);
+         get_reports(new_page_index + 1, false);
          return false;
       }
       function apply_types(data)
@@ -24,11 +24,11 @@
       function select_all()
       {
       }
-      function apply_records(records)
+      function apply_reports(reports)
       {
-         $("#rbx_records").children().remove();
-         $("#rbx_records").append("<tr><th class=\"show_col\">Show</th><th class=\"no_col\">No</th><th class=\"type_col\">Type</th><th class=\"pid_col\">Pid</th><th class=\"date_col\">Date</th></tr>");
-         $.each(records, function(i, rec){
+         $("#rbx_reports").children().remove();
+         $("#rbx_reports").append("<tr><th class=\"show_col\">Show</th><th class=\"no_col\">No</th><th class=\"type_col\">Type</th><th class=\"pid_col\">Pid</th><th class=\"date_col\">Date</th></tr>");
+         $.each(reports, function(i, rec){
             var recClass = "";
             if (rec.type == "error" || rec.type == "error_report" || rec.type == "error_msg" || rec.type == "crash_report")
             {
@@ -46,17 +46,17 @@
             {
                recClass = "info";
             }
-            $("#rbx_records").append($("<tr class=\"" + recClass + "\"><td class=\"show_col\"><input id=\"rbx_show\" value=\"" +
+            $("#rbx_reports").append($("<tr class=\"" + recClass + "\"><td class=\"show_col\"><input id=\"rbx_show\" value=\"" +
                   rec.no + "\" type=\"checkbox\"/></td><td>" + rec.no + "</td><td>" + rec.type + "</td><td>" + rec.pid + "</td><td>"
                   + rec.date + "</td></tr>").click(function()
             {
-               var recs = get_selected_records();
-               if (recs == "[]") // has no selected records
+               var recs = get_selected_reports();
+               if (recs == "[]") // has no selected reports
                {
                   recs = "[" + rec.no + "]";
                }
                recs += ".";
-               $.post("/get_sel_records", recs, function(res){
+               $.post("/get_sel_reports", recs, function(res){
                   var body = $("body", top.frames[1].document);
                   body.children().remove();
                   body.append(res);
@@ -81,10 +81,10 @@
          });
          return res + "]";
       }
-      function get_selected_records()
+      function get_selected_reports()
       {
          var res = "[";
-         $("#rbx_records #rbx_show").each(function(i, it)
+         $("#rbx_reports #rbx_show").each(function(i, it)
          {
             if (it.checked == true)
             {
@@ -97,29 +97,29 @@
          });
          return res + "]";
       }
-      function get_records(page, doPagination)
+      function get_reports(page, doPagination)
       {
          var reg_exp = $("#rbx_grep").val();
          var recOnPage = $("#rbx_rec_on_page").val();
          var selTypes = get_selected_types();
          var request = "{[{reg_exp, \"" + reg_exp + "\"}, {types, " + selTypes + "}]," + page + "," + recOnPage + "}.";
-         $.post("/get_records", request, function(res)
+         $.post("/get_reports", request, function(res)
          {
             var data = jQuery.parseJSON(res);
             if (doPagination)
             {
-               $("#pagination").pagination(data.records_count,
+               $("#pagination").pagination(data.reports_count,
                {
                   items_per_page:recOnPage,
                   callback:handlePaginationClick
                });
             }
-            apply_records(data.records);
+            apply_reports(data.reports);
          });
       }
       function rescan()
       {
-         var maxRecords = $("#rbx_max_records").val();
+         var maxRecords = $("#rbx_max_reports").val();
          var recOnPage = $("#rbx_rec_on_page").val();
          var reg_exp = $("#rbx_grep").val();
          var request = "{" + maxRecords  + "," + recOnPage + ",[{reg_exp, \"" + reg_exp + "\"}]}.";
@@ -127,12 +127,12 @@
          {
             var data = jQuery.parseJSON(res);
             apply_types(data.types);
-            $("#pagination").pagination(data.records_count,
+            $("#pagination").pagination(data.reports_count,
             {
                items_per_page:recOnPage,
                callback:handlePaginationClick
             });
-            apply_records(data.records);
+            apply_reports(data.reports);
          });
       }
       $(document).ready(function(){
@@ -143,15 +143,15 @@
          });
          $("#rbx_apply").click(function()
          {
-            get_records("1", true);
+            get_reports("1", true);
          });
       });
       </script>
    </head>
    <body>
       <p>
-         <label for="rbx_max_records">Max records</label>
-         <select id="rbx_max_records">
+         <label for="rbx_max_reports">Max reports</label>
+         <select id="rbx_max_reports">
             <option>100</option>
             <option>500</option>
             <option>1000</option>
@@ -174,6 +174,6 @@
       <p class="pages" id="rbx_pages"></p>
       <p id="pagination" class="pagination"></p>
       <br style="clear:both;" />
-      <table class="records" id="rbx_records"/>
+      <table class="reports" id="rbx_reports"/>
    </body>
 </html>
