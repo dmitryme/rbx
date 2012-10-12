@@ -1,3 +1,15 @@
+%% ``The contents of this file are subject to the Erlang Public License,
+%% Version 1.1, (the "License"); you may not use this file except in
+%% compliance with the License. You should have received a copy of the
+%% Erlang Public License along with this software. If not, it can be
+%% retrieved via the world wide web at http://www.erlang.org/.
+%%
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+%% the License for the specific language governing rights and limitations
+%% under the License.
+%%
+
 -module(rbx_cons).
 
 -behaviour(gen_server).
@@ -11,8 +23,51 @@
 
 -record(state, {device, node, utc_log}).
 
-%======================================================================================================================
-%  gen_server interface functions
+%=======================================================================================================================
+% public interface
+%=======================================================================================================================
+-spec rescan() -> ok.
+rescan() ->
+   rescan(all).
+
+-spec rescan(pos_integer() | all) -> ok.
+rescan(MaxReports) ->
+   gen_server:cast(rbx_cons, {rescan, MaxReports}).
+
+-spec list() -> string().
+list() ->
+   list([]).
+
+-spec list(rbx:filter()) -> string().
+list(Filter) ->
+   gen_server:call(rbx_cons, {list, Filter}).
+
+-spec show() -> string().
+show() ->
+   show(all).
+
+-spec show([pos_integer()]) -> string().
+show(Number) ->
+   gen_server:call(rbx_cons, {show, Number}).
+
+-spec start_log(string()) -> ok.
+start_log(Filename) ->
+   gen_server:cast(rbx_cons, {start_log, Filename}).
+
+-spec stop_log() -> ok.
+stop_log() ->
+   gen_server:cast(rbx_cons, stop_log).
+
+-spec attach(node()) -> ok.
+attach(Node) ->
+   gen_server:call(rbx_cons, {attach, Node}).
+
+-spec detach() -> ok.
+detach() ->
+   gen_server:cast(rbx_cons, detach).
+
+%=======================================================================================================================
+% gen_server interface functions
 %=======================================================================================================================
 start() -> start([]).
 start(Options) ->
@@ -23,39 +78,6 @@ start(Options) ->
 start_link(Options) ->
    gen_server:start_link({local, rbx_cons}, ?MODULE, Options, []).
 
-rescan() ->
-   rescan(all).
-
-rescan(MaxReports) ->
-   gen_server:cast(rbx_cons, {rescan, MaxReports}).
-
-list() ->
-   list([]).
-
-list(Filter) ->
-   gen_server:call(rbx_cons, {list, Filter}).
-
-show() ->
-   show(all).
-
-show(Number) ->
-   gen_server:call(rbx_cons, {show, Number}).
-
-start_log(Filename) ->
-   gen_server:cast(rbx_cons, {start_log, Filename}).
-
-stop_log() ->
-   gen_server:cast(rbx_cons, stop_log).
-
-attach(Node) ->
-   gen_server:call(rbx_cons, {attach, Node}).
-
-detach() ->
-   gen_server:cast(rbx_cons, detach).
-
-%=======================================================================================================================
-%  gen_server interface functions
-%=======================================================================================================================
 init(Options) ->
    Log = rbx_utils:get_option(start_log, Options, standard_io),
    Device = open_log_file(Log),

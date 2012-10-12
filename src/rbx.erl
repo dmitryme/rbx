@@ -16,6 +16,7 @@
 %%
 %% %CopyrightEnd%
 %%
+
 -module(rbx).
 
 -behaviour(gen_server).
@@ -30,8 +31,8 @@
 
 -record(state, {dir, data, device, max = ?def_max, types, log}).
 
--type rec_type() :: atom().
--type filter() :: {'types', [rec_type()]} |
+-type rep_type() :: atom().
+-type filter() :: {'types', [rep_type()]} |
                   {'reg_exp', string()} |
                   {'datetime', {calendar:datetime(), calendar:datetime()}} |
                   {'datetime', {from, calendar:datetime()}} |
@@ -39,9 +40,9 @@
 -type filters() :: [filter()].
 -type list_result() :: list() | {'error', term()}.
 
-%%-----------------------------------------------------------------
-%% public interface.
-%%-----------------------------------------------------------------
+%=======================================================================================================================
+%  public interface
+%=======================================================================================================================
 -spec list(node()) -> list_result().
 list(Node) ->
    list(Node, []).
@@ -69,9 +70,9 @@ show(Node, all) ->
 get_types(Node) ->
    gen_server:call({rbx, Node}, get_types, infinity).
 
-%%-----------------------------------------------------------------
-%% gen_server interface functions.
-%%-----------------------------------------------------------------
+%=======================================================================================================================
+% gen_server interface functions
+%=======================================================================================================================
 start() -> start([]).
 start(Options) ->
     supervisor:start_child(sasl_sup,
