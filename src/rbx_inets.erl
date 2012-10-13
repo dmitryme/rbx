@@ -22,7 +22,20 @@
 
 -export([do/1]).
 
+-export([attach/1, detach/0]).
+
 -record(state, {document_root, node, utc_log = false}).
+
+%=======================================================================================================================
+% public interface
+%=======================================================================================================================
+-spec attach(node()) -> ok.
+attach(Node) ->
+   gen_server:call(rbx_inets, {attach, Node}).
+
+-spec detach() -> ok.
+detach() ->
+   gen_server:cast(rbx_inets, detach).
 
 %=======================================================================================================================
 % gen_server interface functions
@@ -64,11 +77,31 @@ handle_call({get_sel_reports, RecList}, _From, State) ->
    FmtRecords = lists:foldr(fun(R, Acc) -> [report_formatter_html:format(R, State#state.utc_log) | Acc] end, [], Records),
    {reply, FmtRecords, State};
 handle_call(get_doc_root, _From, State) ->
-   {reply, State#state.document_root, State}.
+   {reply, State#state.document_root, State};
+handle_call({attach, Node}, _From, State) ->
+   case net_adm:ping(Node) of
+      pong ->
+         Res = rpc:call(Node, erlang, whereis, [rbx]),
+         if
+            is_pid(Res) ->
+               io:format("Attached to node ~p~n", [Node]),
+               {reply, ok, State#state{node = Node}};
+            true ->
+               io:format("rbx not started on ~p~n", [Node]),
+               {reply, error, State}
+         end;
+      pang ->
+         io:format("Handshake with ~p failed.~n", [Node]),
+         {reply, error, State}
+   end;
+handle_call(_, _, State) ->
+   {reply, ok, State}.
 
 handle_cast({rescan, MaxRecords}, State) ->
    rbx:rescan(State#state.node, MaxRecords),
    {noreply, State};
+handle_cast(detach, State) ->
+   {noreply, State#state{node = node()}};
 handle_cast(_Msg, State) ->
    {noreply, State}.
 
