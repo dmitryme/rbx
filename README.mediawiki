@@ -1,3 +1,6 @@
-This is a extended "replacement" of rb(report browser).
+== RBX is a Report Browser eXtended. ==
 
-Read Wiki for details
+This is a replacement of native rb (Report Browser Tool). It was implemented in document/view manner.
+[https://github.com/dmitryme/rbx/blob/master/src/rbx.erl rbx] module is a document and
+[https://github.com/dmitryme/rbx/blob/master/src/rbx_cons.erl rbx_cons],
+[https://github.com/dmitryme/rbx/blob/master/src/rbx_inets.erl rbx_inets] are - views.
