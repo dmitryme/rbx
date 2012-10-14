@@ -31,6 +31,25 @@ E.g. <code>erl -rbx inets_port 8001</code>
 === Modules exports ===
 
 ==== Types ====
+*'''<code>rep_type</code>''' = atom()<br>
+*'''<code>strpid</code>''' = string()<br>
+*'''<code>report</code>''' = {pos_integer(), rep_type(), strpid(), calendar:datetime()}<br>
+*'''<code>filter</code>''' = {types, [rep_type]} | {reg_exp, string()} | {datetime, {calendar:datetime(), calendar:datetime()}} | {datetime, {from, calendar:datetime()}} | {datetime, {to, calendar:datetime()}
 ==== rbx ====
+*'''<code>list(Node) -> Reports</code>''' - returns list of reports
+** Node = atom() - node name
+** Reports = [report]
+*'''<code>list(Node, Filters) -> Reports</code>''' -> same as list/1, but applies filters
+** Node = atom() - node name
+** Filters = [filter] - filter out records
+*'''<code>rescan(Node, MaxRecords) -> ReportTypes</code>''' - load reports from files
+** Node = atom() - node name
+** MaxRecords = pos_integer() - max records to load
+*'''<code>show(Node, ReportNums) -> report()</code>''' - show reports
+** Node = atom() - node name
+** ReportNums = [pos_integer()] - numbers of reports to show
+*'''<code>get_types(Node) -> Types</code>''' - get list of loaded reports
+** Node = atom() - node name
+** RepTypes = [rep_type()] - loaded report types
 ==== rbx_cond ====
 ==== rbx_inets ====
