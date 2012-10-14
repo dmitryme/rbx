@@ -31,24 +31,6 @@ E.g. <code>erl -rbx inets_port 8001</code>
 === Modules exports ===
 
 ==== Types ====
-{|
-|rep_type
-| = atom()
-|-
-|strpid
-| = string()
-|-
-|report
-| = {pos_integer(), rep_type(), strpid(), calendar:datetime()}|-
-|}
-
-
-*'''<code>filter</code>''' = {types, [rep_type()]}
-                           | {reg_exp, string()}
-                           | {datetime, {calendar:datetime(), calendar:datetime()}}
-                           | {datetime, {from, calendar:datetime()}}
-                           | {datetime, {to, calendar:datetime()}
-
 ==== rbx ====
 ==== rbx_cond ====
 ==== rbx_inets ====
