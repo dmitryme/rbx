@@ -1,5 +1,7 @@
 == RBX is a Report Browser eXtended. ==
 
+=== Overview ===
+
 This is a replacement of native rb (Report Browser Tool). It was implemented in document/view manner.
 [https://github.com/dmitryme/rbx/blob/master/src/rbx.erl rbx] module is a document and
 [https://github.com/dmitryme/rbx/blob/master/src/rbx_cons.erl rbx_cons],
@@ -9,3 +11,26 @@ This is a replacement of native rb (Report Browser Tool). It was implemented in 
 * [https://github.com/dmitryme/rbx/blob/master/src/rbx_cons.erl rbx_cons] is a console view like rb
 * [https://github.com/dmitryme/rbx/blob/master/src/rbx_inets.erl rbx_inets] is a web view. So, using you favorite browser you can explore logs.
 * ''You can write you own view best suitable for your needs''
+
+=== Build instruction ===
+Just run
+<code>./rebar compile</code>
+
+=== How to start ===
+Just run
+<code>application:start(rbx).</code>
+
+=== Configuration parameters ===
+* <code>inets_port <port></code> - httpd port. If not present, <code>8000</code>
+* <code>report_dir <path></code> - path to logs. If no paramenter is specified, sasl error_logger_mf_dir is used
+* <code>start_log <file_name></code> - rbx_cons will dump output into <code><file_name></code> file instead of stdout
+
+These parameters can be specified in app.config file or passed directly to erl.
+E.g. <code>erl -rbx inets_port 8001</code>
+
+=== Modules exports ===
+
+==== Types ====
+==== rbx ====
+==== rbx_cond ====
+==== rbx_inets ====
