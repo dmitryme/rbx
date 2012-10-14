@@ -4,3 +4,8 @@ This is a replacement of native rb (Report Browser Tool). It was implemented in 
 [https://github.com/dmitryme/rbx/blob/master/src/rbx.erl rbx] module is a document and
 [https://github.com/dmitryme/rbx/blob/master/src/rbx_cons.erl rbx_cons],
 [https://github.com/dmitryme/rbx/blob/master/src/rbx_inets.erl rbx_inets] are - views.
+
+* [https://github.com/dmitryme/rbx/blob/master/src/rbx.erl rbx] returns tuples, list of tuples w/o formatting.
+* [https://github.com/dmitryme/rbx/blob/master/src/rbx_cons.erl rbx_cons] is a console view like rb
+* [https://github.com/dmitryme/rbx/blob/master/src/rbx_inets.erl rbx_inets] is a web view. So, using you favorite browser you can explore logs.
+* _You can write you own view best suitable for your needs_
