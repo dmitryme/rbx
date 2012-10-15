@@ -31,9 +31,9 @@ E.g. <code>erl -rbx inets_port 8001</code>
 === Modules exports ===
 
 ==== Types ====
-*'''<code>rep_type</code>''' = atom()<br>
-*'''<code>strpid</code>''' = string()<br>
-*'''<code>report</code>''' = {pos_integer(), rep_type(), strpid(), calendar:datetime()}<br>
+*'''<code>rep_type</code>''' = atom()
+*'''<code>strpid</code>''' = string()
+*'''<code>report</code>''' = {pos_integer(), rep_type(), strpid(), calendar:datetime()}
 *'''<code>filter</code>''' = {types, [rep_type]} | {reg_exp, string()} | {datetime, {calendar:datetime(), calendar:datetime()}} | {datetime, {from, calendar:datetime()}} | {datetime, {to, calendar:datetime()}
 ==== rbx ====
 *'''<code>list(Node) -> Reports</code>''' - returns list of reports
@@ -51,5 +51,10 @@ E.g. <code>erl -rbx inets_port 8001</code>
 *'''<code>get_types(Node) -> Types</code>''' - get list of loaded reports
 ** Node = atom() - node name
 ** RepTypes = [rep_type()] - loaded report types
-==== rbx_cond ====
 ==== rbx_inets ====
+* '''<code>attach(Node) -> ok | {error, Reason()}</code>''' - attaches view to rbx server run on another node. 
+** Node = atom() - node name
+** Reason = string()
+* '''<code>detach() -> ok</code>''' - detaches from remote rbx. Back to local one.
+==== rbx_cond ====
+
