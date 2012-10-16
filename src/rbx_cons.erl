@@ -19,7 +19,7 @@
          handle_cast/2, handle_info/2, code_change/3]).
 
 %% public exports
--export([list/0, list/1, rescan/0, rescan/1, show/0, show/1, start_log/1, stop_log/0, attach/1, detach/0]).
+-export([list/0, list/1, rescan/0, rescan/1, show/0, show/1, start_log/1, stop_log/0, attach/1, detach/0, attached_node/0]).
 
 -record(state, {device, node, utc_log}).
 
@@ -65,6 +65,10 @@ attach(Node) ->
 -spec detach() -> ok.
 detach() ->
    gen_server:cast(rbx_cons, detach).
+
+-spec attached_node() -> atom().
+attached_node() ->
+   gen_server:call(rbx_cons, attached_node).
 
 %=======================================================================================================================
 % gen_server interface functions
@@ -121,6 +125,8 @@ handle_call({attach, Node}, _From, State) ->
          io:format("Handshake with ~p failed.~n", [Node]),
          {reply, error, State}
    end;
+handle_call(attached_node, _From, State) ->
+   {reply, State#state.node, State};
 handle_call(_, _, State) ->
    {reply, ok, State}.
 
