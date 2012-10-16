@@ -56,6 +56,7 @@ E.g. <code>erl -rbx inets_port 8001</code>
 ** Node = atom() - node name
 ** Reason = string()
 * '''<code>detach() -> ok</code>''' - detaches from remote rbx. Back to local one.
+* '''<code>attached_node() -> atom()</code>''' - show attached node
 ==== rbx_cons ====
 * '''<code>rescan() -> RepTypes</code>''' - load all reports from file
 * '''<code>rescan(MaxReports) -> RepTypes</code>''' - load reports from file
@@ -75,3 +76,4 @@ E.g. <code>erl -rbx inets_port 8001</code>
 ** Node = atom() - node to attach
 ** Reason = string()
 * '''<code>detach() -> ok</code>''' - detaches from remote rbx. Back to local one.
+* '''<code>attached_node() -> atom()</code>''' - show attached node
