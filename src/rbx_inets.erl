@@ -22,7 +22,7 @@
 
 -export([do/1]).
 
--export([attach/1, detach/0]).
+-export([attach/1, detach/0, attached_node/0]).
 
 -record(state, {document_root, node, utc_log = false}).
 
@@ -36,6 +36,10 @@ attach(Node) ->
 -spec detach() -> ok.
 detach() ->
    gen_server:cast(rbx_inets, detach).
+
+-spec attached_node() -> atom().
+attached_node() ->
+   gen_server:call(rbx_cons, attached_node).
 
 %=======================================================================================================================
 % gen_server interface functions
@@ -94,6 +98,8 @@ handle_call({attach, Node}, _From, State) ->
          io:format("Handshake with ~p failed.~n", [Node]),
          {reply, error, State}
    end;
+handle_call(attached_node, _From, State) ->
+   {reply, State#state.node, State};
 handle_call(_, _, State) ->
    {reply, ok, State}.
 
