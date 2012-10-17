@@ -24,6 +24,8 @@
 
 -record(state, {document_root, nodes, utc_log = false}).
 
+-define(TIMEOUT, 1000).
+
 %=======================================================================================================================
 % gen_server interface functions
 %=======================================================================================================================
@@ -53,33 +55,37 @@ init(Options) ->
       _ -> false
    end,
    Nodes = get_rbx_nodes(),
-   {ok, #state{document_root = DocRoot, nodes = Nodes, utc_log = UtcLog}}.
+   {ok, #state{document_root = DocRoot, nodes = Nodes, utc_log = UtcLog}, ?TIMEOUT}.
 
 handle_call({get_types, Node}, _, State) ->
-   {reply, rbx:get_types(Node), State};
+   {reply, rbx:get_types(Node), State, ?TIMEOUT};
 handle_call({get_list, Node, DoRescan, MaxReports, Filters}, _From, State) ->
    if DoRescan -> rbx:rescan(Node, MaxReports);
    true -> ok
    end,
    RepList = rbx:list(Node, Filters),
-   {reply, {RepList, State#state.utc_log}, State};
+   {reply, {RepList, State#state.utc_log}, State, ?TIMEOUT};
 handle_call({get_sel_reports, Node, RecList}, _From, State) ->
    Records = rbx:show(Node, RecList),
    FmtRecords = lists:foldr(fun(R, Acc) -> [report_formatter_html:format(R, State#state.utc_log) | Acc] end, [], Records),
-   {reply, FmtRecords, State};
+   {reply, FmtRecords, State, ?TIMEOUT};
 handle_call(get_doc_root, _From, State) ->
-   {reply, State#state.document_root, State};
+   {reply, State#state.document_root, State, ?TIMEOUT};
 handle_call(_, _, State) ->
-   {reply, ok, State}.
+   {reply, ok, State, ?TIMEOUT}.
 
 handle_cast(_Msg, State) ->
-   {noreply, State}.
+   {noreply, State, ?TIMEOUT}.
 
 terminate(_Reason, _) ->
    ok.
 
+handle_info(timeout, State) ->
+   Nodes = get_rbx_nodes(),
+   io:format("NODES ~p~n", [Nodes]),
+   {noreply, State#state{nodes = Nodes}, ?TIMEOUT};
 handle_info(_Info, State) ->
-   {noreply, State}.
+   {noreply, State, ?TIMEOUT}.
 
 code_change(_OldVsn, State, _Extra) ->
    {ok, State}.
