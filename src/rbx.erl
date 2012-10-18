@@ -25,7 +25,7 @@
 -export([start/0, start/1, start_link/1, init/1, terminate/2, handle_call/3,
          handle_cast/2, handle_info/2, code_change/3]).
 
--export([list/1, list/2, rescan/2, show/2, get_types/1]).
+-export([list/1, list/2, rescan/2, show/2, get_rtypes/1]).
 
 -define(def_max, 100).
 
@@ -66,9 +66,9 @@ show(Node, NumList) when is_list(NumList) ->
 show(Node, all) ->
    gen_server:call({rbx, Node}, {show_number, all}, infinity).
 
--spec get_types(node()) -> filters() | {'error', term()}.
-get_types(Node) ->
-   gen_server:call({rbx, Node}, get_types, infinity).
+-spec get_rtypes(node()) -> filters() | {'error', term()}.
+get_rtypes(Node) ->
+   gen_server:call({rbx, Node}, get_rtypes, infinity).
 
 %=======================================================================================================================
 % gen_server interface functions
@@ -92,7 +92,7 @@ init(Options) ->
 handle_call({rescan, Max}, _From, State) ->
    {Data, Types} = scan_files(State#state.dir ++ "/", Max),
    {reply, Types, State#state{data = Data, types = Types, max = Max}};
-handle_call(get_types, _From, State) ->
+handle_call(get_rtypes, _From, State) ->
    {reply, State#state.types, State};
 handle_call(_, _From, #state{data = undefined}) ->
    {reply, {error, no_data}, #state{}};
