@@ -100,7 +100,6 @@ code_change(_OldVsn, State, _Extra) ->
 % inets httpd callbacks
 %=======================================================================================================================
 do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_replist" ->
-   io:format("~p~n", [Query]),
    Response = get_replist(Query),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri}) when Uri == "/get_state" ->
@@ -161,7 +160,6 @@ get_replist(Query) when is_list(Query) ->
    get_replist(Term);
 get_replist(ClState) ->
    {RepList, RTypes, UtcLog} = gen_server:call(rbx_inets, {get_replist, ClState}),
-   io:format("~p ~p~n", [RepList, RTypes]),
    lists:concat(["{\"rtypes\":", list_to_json(RTypes, UtcLog, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
                   "\"reports_count\":", length(RepList), ',',
                  "\"reports\":", get_replist(RepList, UtcLog, ClState#clstate.page, ClState#clstate.rec_on_page), '}']).
