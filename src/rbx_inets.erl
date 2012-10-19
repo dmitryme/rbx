@@ -104,6 +104,7 @@ do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_replist" ->
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri}) when Uri == "/get_state" ->
    Response = get_state(),
+   io:format("~p~n", [Response]),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = RecList}) when Uri == "/get_sel_reports" ->
    Response = get_sel_reports(RecList),
@@ -135,9 +136,9 @@ get_state() ->
                   "\"ignored_rtypes\":", list_to_json(ClState#clstate.ignored_rtypes, true, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
                   "\"node\":\"", ClState#clstate.node, "\",",
                   "\"do_rescan\":", ClState#clstate.do_rescan, ',',
-                  "\"max_reports\":", ClState#clstate.max_reports, ',',
-                  "\"page\":", ClState#clstate.page, ',',
-                  "\"rec_on_page\":", ClState#clstate.rec_on_page,
+                  "\"max_reports\":\"", ClState#clstate.max_reports, "\",",
+                  "\"page\":\"", ClState#clstate.page, "\",",
+                  "\"rec_on_page\":\"", ClState#clstate.rec_on_page, "\"",
                   "}"]).
 
 get_rbx_nodes() ->
@@ -170,8 +171,8 @@ get_replist(RepList, UtcLog, Page, RecOnPage) ->
 
 get_sel_reports(Query) when is_list(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),
-   {ok, Term} = erl_parse:parse_term(Tokens),
-   gen_server:call(rbx_inets, {get_sel_reports, Term}).
+   {ok, {Node, RecList}} = erl_parse:parse_term(Tokens),
+   gen_server:call(rbx_inets, {get_sel_reports, Node, RecList}).
 
 report_to_json({No, RepType, Pid, Date}, UtcLog) ->
    lists:concat(["{\"no\":\"", No, "\",",
