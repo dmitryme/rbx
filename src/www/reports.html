@@ -8,7 +8,7 @@
       <script type="text/javascript">
       function handlePaginationClick(new_page_index, pagination_container)
       {
-         get_reports(new_page_index + 1, false);
+         get_replist(new_page_index + 1, false);
          return false;
       }
       function apply_types(data, ignTypes)
@@ -60,8 +60,8 @@
                {
                   recs = "[" + rec.no + "]";
                }
-               recs += ".";
-               $.post("/get_sel_reports", recs, function(res){
+               var node = $("#rbx_node").val();
+               $.post("/get_sel_reports", "{" + node + "," + recs + "}.", function(res){
                   var body = $("body", top.frames[1].document);
                   body.children().remove();
                   body.append(res);
@@ -140,7 +140,7 @@
          $.post("/get_state", "", function(res)
          {
             var data = jQuery.parseJSON(res);
-            apply_types(data.rtypes, new Array());
+            apply_types(data.rtypes, data.ignored_rtypes);
             $("#rbx_rescan").attr("checked", data.do_rescan);
             $("#rbx_max_reports").val(data.max_reports);
             $("#rbx_rec_on_page").val(data.rec_on_page);
@@ -153,7 +153,8 @@
             get_replist("1", true);
          });
       }
-      $(document).ready(function(){
+      $(document).ready(function()
+      {
          get_state();
          $("#rbx_show").click(function()
          {
