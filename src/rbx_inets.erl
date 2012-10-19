@@ -22,24 +22,11 @@
 
 -export([do/1]).
 
--export([attach/1, detach/0, attached_node/0]).
+-record(state, {document_root, nodes, client_state, utc_log = false}).
+-record(clstate, {re = "", ignored_rtypes = [], node = undef, do_rescan = false, max_reports = 100, page = 1,
+      rec_on_page = 30}).
 
--record(state, {document_root, node, utc_log = false}).
-
-%=======================================================================================================================
-% public interface
-%=======================================================================================================================
--spec attach(node()) -> ok.
-attach(Node) ->
-   gen_server:call(rbx_inets, {attach, Node}).
-
--spec detach() -> ok.
-detach() ->
-   gen_server:cast(rbx_inets, detach).
-
--spec attached_node() -> atom().
-attached_node() ->
-   gen_server:call(rbx_cons, attached_node).
+-define(TIMEOUT, 1000).
 
 %=======================================================================================================================
 % gen_server interface functions
@@ -69,53 +56,42 @@ init(Options) ->
       {ok, true} -> true;
       _ -> false
    end,
-   {ok, #state{document_root = DocRoot, node = node(), utc_log = UtcLog}}.
+   Nodes = get_rbx_nodes(),
+   {ok, #state{document_root = DocRoot, nodes = Nodes, client_state = #clstate{node = hd(Nodes)}, utc_log = UtcLog}, ?TIMEOUT}.
 
-handle_call(get_types, _, State) ->
-   {reply, rbx:get_types(State#state.node), State};
-handle_call({get_reports, Filters}, _From, State) ->
-   Records = rbx:list(State#state.node, Filters),
-   {reply, {Records, State#state.utc_log}, State};
-handle_call({get_sel_reports, RecList}, _From, State) ->
-   Records = rbx:show(State#state.node, RecList),
+handle_call(get_state, _From, State = #state{nodes = Nodes, client_state = ClState}) ->
+   RTypes = rbx:get_rtypes(ClState#clstate.node),
+   {reply, {Nodes, RTypes, ClState}, State};
+handle_call({get_replist, ClState}, _From, State = #state{client_state = OldClState}) ->
+   DoRescan = ClState#clstate.do_rescan orelse ClState#clstate.node =/= OldClState#clstate.node orelse
+      ClState#clstate.max_reports =/= OldClState#clstate.max_reports,
+   RTypes = case DoRescan of
+      true -> rbx:rescan(ClState#clstate.node, ClState#clstate.max_reports);
+      false -> rbx:get_rtypes(ClState#clstate.node)
+   end,
+   DesiredRTypes = lists:subtract(RTypes, ClState#clstate.ignored_rtypes),
+   RepList = rbx:list(ClState#clstate.node, [{types, DesiredRTypes}, {reg_exp, ClState#clstate.re}]),
+   {reply, {RepList, RTypes, State#state.utc_log}, State#state{client_state = ClState}, ?TIMEOUT};
+handle_call({get_sel_reports, Node, RecList}, _From, State) ->
+   Records = rbx:show(Node, RecList),
    FmtRecords = lists:foldr(fun(R, Acc) -> [report_formatter_html:format(R, State#state.utc_log) | Acc] end, [], Records),
-   {reply, FmtRecords, State};
+   {reply, FmtRecords, State, ?TIMEOUT};
 handle_call(get_doc_root, _From, State) ->
-   {reply, State#state.document_root, State};
-handle_call({attach, Node}, _From, State) ->
-   case net_adm:ping(Node) of
-      pong ->
-         Res = rpc:call(Node, erlang, whereis, [rbx]),
-         if
-            is_pid(Res) ->
-               io:format("Attached to node ~p~n", [Node]),
-               {reply, ok, State#state{node = Node}};
-            true ->
-               io:format("rbx not started on ~p~n", [Node]),
-               {reply, error, State}
-         end;
-      pang ->
-         io:format("Handshake with ~p failed.~n", [Node]),
-         {reply, error, State}
-   end;
-handle_call(attached_node, _From, State) ->
-   {reply, State#state.node, State};
+   {reply, State#state.document_root, State, ?TIMEOUT};
 handle_call(_, _, State) ->
-   {reply, ok, State}.
+   {reply, ok, State, ?TIMEOUT}.
 
-handle_cast({rescan, MaxRecords}, State) ->
-   rbx:rescan(State#state.node, MaxRecords),
-   {noreply, State};
-handle_cast(detach, State) ->
-   {noreply, State#state{node = node()}};
 handle_cast(_Msg, State) ->
-   {noreply, State}.
+   {noreply, State, ?TIMEOUT}.
 
 terminate(_Reason, _) ->
    ok.
 
+handle_info(timeout, State) ->
+   Nodes = get_rbx_nodes(),
+   {noreply, State#state{nodes = Nodes}, ?TIMEOUT};
 handle_info(_Info, State) ->
-   {noreply, State}.
+   {noreply, State, ?TIMEOUT}.
 
 code_change(_OldVsn, State, _Extra) ->
    {ok, State}.
@@ -123,11 +99,11 @@ code_change(_OldVsn, State, _Extra) ->
 %=======================================================================================================================
 % inets httpd callbacks
 %=======================================================================================================================
-do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/rescan" ->
-   Response = rescan(Query),
+do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_replist" ->
+   Response = get_replist(Query),
    {proceed, [{response, {200, Response}}]};
-do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_reports" ->
-   Response = get_reports(Query),
+do(#mod{request_uri = Uri}) when Uri == "/get_state" ->
+   Response = get_state(),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = RecList}) when Uri == "/get_sel_reports" ->
    Response = get_sel_reports(RecList),
@@ -151,36 +127,51 @@ do(#mod{request_uri = Uri}) ->
 %  private
 %=======================================================================================================================
 
+get_state() ->
+   {Nodes, RTypes, ClState} = gen_server:call(rbx_inets, get_state),
+   lists:concat(["{\"nodes\":", list_to_json(Nodes, true, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
+                  "\"rtypes\":", list_to_json(RTypes, true, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
+                  "\"re\":\"", ClState#clstate.re, "\",",
+                  "\"ignored_rtypes\":", list_to_json(ClState#clstate.ignored_rtypes, true, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
+                  "\"node\":\"", ClState#clstate.node, "\",",
+                  "\"do_rescan\":", ClState#clstate.do_rescan, ',',
+                  "\"max_reports\":\"", ClState#clstate.max_reports, "\",",
+                  "\"page\":\"", ClState#clstate.page, "\",",
+                  "\"rec_on_page\":\"", ClState#clstate.rec_on_page, "\"",
+                  "}"]).
+
+get_rbx_nodes() ->
+   Nodes = nodes([this, visible]),
+   lists:foldr(fun(Node, Acc) ->
+      Res = rpc:call(Node, erlang, whereis, [rbx]),
+      if is_pid(Res) ->
+         [Node | Acc];
+      true ->
+         Acc
+      end
+   end, [], Nodes).
+
 get_doc_root() ->
    gen_server:call(rbx_inets, get_doc_root).
 
-rescan(Query) when is_list(Query) ->
+get_replist(Query) when is_list(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),
    {ok, Term} = erl_parse:parse_term(Tokens),
-   rescan(Term);
-rescan({MaxRecords, RecOnPage, Filters}) ->
-   gen_server:cast(rbx_inets, {rescan, MaxRecords}),
-   get_reports({Filters, 1, RecOnPage}).
-
-get_reports(Query) when is_list(Query) ->
-   {ok, Tokens, _} = erl_scan:string(Query),
-   {ok, Term} = erl_parse:parse_term(Tokens),
-   get_reports(Term);
-get_reports({Filters, Page, RecOnPage}) ->
-   AllTypes = gen_server:call(rbx_inets, get_types),
-   {Records, UtcLog} = gen_server:call(rbx_inets, {get_reports, Filters}),
-   lists:concat(["{\"types\":", list_to_json(AllTypes, UtcLog, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
-                  "\"reports_count\":", length(Records), ',',
-                 "\"reports\":", get_reports(Records, UtcLog, Page, RecOnPage), '}']).
-get_reports(Records, UtcLog, Page, RecOnPage) ->
-   StartFrom = lists:nthtail((Page - 1) * RecOnPage, Records),
-   PageRecords = lists:sublist(StartFrom, min(length(StartFrom), RecOnPage)),
-   list_to_json(PageRecords, UtcLog, fun report_to_json/2).
+   get_replist(Term);
+get_replist(ClState) ->
+   {RepList, RTypes, UtcLog} = gen_server:call(rbx_inets, {get_replist, ClState}),
+   lists:concat(["{\"rtypes\":", list_to_json(RTypes, UtcLog, fun(T, _) -> "\"" ++ atom_to_list(T) ++ "\"" end), ',',
+                  "\"reports_count\":", length(RepList), ',',
+                 "\"reports\":", get_replist(RepList, UtcLog, ClState#clstate.page, ClState#clstate.rec_on_page), '}']).
+get_replist(RepList, UtcLog, Page, RecOnPage) ->
+   StartFrom = lists:nthtail((Page - 1) * RecOnPage, RepList),
+   PageReports = lists:sublist(StartFrom, min(length(StartFrom), RecOnPage)),
+   list_to_json(PageReports, UtcLog, fun report_to_json/2).
 
 get_sel_reports(Query) when is_list(Query) ->
    {ok, Tokens, _} = erl_scan:string(Query),
-   {ok, Term} = erl_parse:parse_term(Tokens),
-   gen_server:call(rbx_inets, {get_sel_reports, Term}).
+   {ok, {Node, RecList}} = erl_parse:parse_term(Tokens),
+   gen_server:call(rbx_inets, {get_sel_reports, Node, RecList}).
 
 report_to_json({No, RepType, Pid, Date}, UtcLog) ->
    lists:concat(["{\"no\":\"", No, "\",",
