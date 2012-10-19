@@ -104,7 +104,6 @@ do(#mod{request_uri = Uri, entity_body = Query}) when Uri == "/get_replist" ->
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri}) when Uri == "/get_state" ->
    Response = get_state(),
-   io:format("~p~n", [Response]),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri, entity_body = RecList}) when Uri == "/get_sel_reports" ->
    Response = get_sel_reports(RecList),
