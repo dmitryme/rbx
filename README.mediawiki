@@ -48,15 +48,9 @@ E.g. <code>erl -rbx inets_port 8001</code>
 *'''<code>show(Node, ReportNums) -> report()</code>''' - show reports
 ** Node = atom() - node name
 ** ReportNums = [pos_integer()] - numbers of reports to show
-*'''<code>get_types(Node) -> Types</code>''' - get list of loaded reports
+*'''<code>get_rtypes(Node) -> Types</code>''' - get list of loaded reports
 ** Node = atom() - node name
 ** RepTypes = [rep_type()] - loaded report types
-==== rbx_inets ====
-* '''<code>attach(Node) -> ok | {error, Reason()}</code>''' - attaches view to rbx server run on another node. 
-** Node = atom() - node name
-** Reason = string()
-* '''<code>detach() -> ok</code>''' - detaches from remote rbx. Back to local one.
-* '''<code>attached_node() -> atom()</code>''' - show attached node
 ==== rbx_cons ====
 * '''<code>rescan() -> RepTypes</code>''' - load all reports from file
 * '''<code>rescan(MaxReports) -> RepTypes</code>''' - load reports from file
