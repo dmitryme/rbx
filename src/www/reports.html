@@ -8,23 +8,28 @@
       <script type="text/javascript">
       function handlePaginationClick(new_page_index, pagination_container)
       {
-         get_reports(new_page_index + 1, false);
+         get_replist(new_page_index + 1, false);
          return false;
       }
-      function apply_types(data)
+      function apply_types(data, ignTypes)
       {
          $("#rbx_types").children().remove();
          $("#rbx_types").text("Types: ");
          $.each(data, function(i, type)
          {
-            $("#rbx_types").append($("<input type='checkbox'>").val(type).attr("checked", true));
+            var checked = true;
+            if (ignTypes.indexOf(type) >= 0)
+            {
+               checked = false;
+            }
+            $("#rbx_types").append($("<input type='checkbox'>").val(type).attr("checked", checked));
             $("#rbx_types").append($("<label>").text(type));
          });
       }
       function select_all()
       {
       }
-      function apply_reports(reports)
+      function show_reports(reports)
       {
          $("#rbx_reports").children().remove();
          $("#rbx_reports").append("<tr><th class=\"show_col\">Show</th><th class=\"no_col\">No</th><th class=\"type_col\">Type</th><th class=\"pid_col\">Pid</th><th class=\"date_col\">Date</th></tr>");
@@ -55,8 +60,8 @@
                {
                   recs = "[" + rec.no + "]";
                }
-               recs += ".";
-               $.post("/get_sel_reports", recs, function(res){
+               var node = $("#rbx_node").val();
+               $.post("/get_sel_reports", "{" + node + "," + recs + "}.", function(res){
                   var body = $("body", top.frames[1].document);
                   body.children().remove();
                   body.append(res);
@@ -64,23 +69,20 @@
             }));
          });
       }
-      function get_selected_types()
+      function get_ignored_types()
       {
-         var res ="[";
-         var len = $("#rbx_types input").length;
+         var arr = new Array();
+         var cnt = 0;
          $("#rbx_types input").each(function(i, t)
          {
-            if (t.checked == true)
+            if (t.checked == false)
             {
-               if (res != "[")
-               {
-                  res += ",";
-               }
-               res += t.value;
+               arr[cnt++] = t.value;
             }
          });
-         return res + "]";
+         return arr;
       }
+
       function get_selected_reports()
       {
          var res = "[";
@@ -97,15 +99,31 @@
          });
          return res + "]";
       }
-      function get_reports(page, doPagination)
+      function get_replist(page, doPagination)
       {
+         var node = $("#rbx_node").val();
+         var doRescan = $("#rbx_rescan").is(":checked");
+         var maxReports = $("#rbx_max_reports").val();
+         var recOnPage = $("#rbx_rec_on_page").val();
          var reg_exp = $("#rbx_grep").val();
          var recOnPage = $("#rbx_rec_on_page").val();
-         var selTypes = get_selected_types();
-         var request = "{[{reg_exp, \"" + reg_exp + "\"}, {types, " + selTypes + "}]," + page + "," + recOnPage + "}.";
-         $.post("/get_reports", request, function(res)
+         var ignTypes = get_ignored_types();
+         var ignTypesList ="[";
+         $.each(ignTypes, function(i, t)
+         {
+            if (ignTypesList != "[")
+            {
+               ignTypesList += ",";
+            }
+            ignTypesList += t;
+         });
+         ignTypesList += "]";
+         var request = "{clstate, \"" + reg_exp + "\"," + ignTypesList + "," + node + "," + doRescan + "," + maxReports
+            + "," + page + "," + recOnPage + "}.";
+         $.post("/get_replist", request, function(res)
          {
             var data = jQuery.parseJSON(res);
+            apply_types(data.rtypes, ignTypes);
             if (doPagination)
             {
                $("#pagination").pagination(data.reports_count,
@@ -114,61 +132,60 @@
                   callback:handlePaginationClick
                });
             }
-            apply_reports(data.reports);
+            show_reports(data.reports);
          });
       }
-      function rescan()
+      function get_state()
       {
-         var maxRecords = $("#rbx_max_reports").val();
-         var recOnPage = $("#rbx_rec_on_page").val();
-         var reg_exp = $("#rbx_grep").val();
-         var request = "{" + maxRecords  + "," + recOnPage + ",[{reg_exp, \"" + reg_exp + "\"}]}.";
-         $.post("/rescan", request, function(res)
+         $.post("/get_state", "", function(res)
          {
             var data = jQuery.parseJSON(res);
-            apply_types(data.types);
-            $("#pagination").pagination(data.reports_count,
+            apply_types(data.rtypes, data.ignored_rtypes);
+            $("#rbx_rescan").attr("checked", data.do_rescan);
+            $("#rbx_max_reports").val(data.max_reports);
+            $("#rbx_rec_on_page").val(data.rec_on_page);
+            $("#rbx_grep").val(data.re);
+            $.each(data.nodes, function(i, node)
             {
-               items_per_page:recOnPage,
-               callback:handlePaginationClick
+               $("#rbx_node").append("<option value=\"" + node + "\">" + node + "</option>");
             });
-            apply_reports(data.reports);
+            $("#rbx_node").val(data.node);
+            get_replist("1", true);
          });
       }
-      $(document).ready(function(){
-         rescan();
-         $("#rbx_rescan").click(function()
+      $(document).ready(function()
+      {
+         get_state();
+         $("#rbx_show").click(function()
          {
-            rescan(get_selected_types());
-         });
-         $("#rbx_apply").click(function()
-         {
-            get_reports("1", true);
+            get_replist("1", true, null);
          });
       });
       </script>
    </head>
    <body>
       <p>
+         <label for="rbx_node">Node</label>
+         <select id="rbx_node"></select>
          <label for="rbx_max_reports">Max reports</label>
          <select id="rbx_max_reports">
-            <option>100</option>
-            <option>500</option>
-            <option>1000</option>
-            <option>all</option>
+            <option value="100">100</option>
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+            <option value="all">all</option>
          </select>
-         <button id="rbx_rescan">Rescan</button>
+         <input type="checkbox" id="rbx_rescan">rescan</button>
       </p>
       <p>
          <label for="rbx_grep">Grep</label>
          <input id="rbx_grep" type = "text">
          <label for="rbx_rec_on_page">Records on page</label>
          <select id="rbx_rec_on_page">
-            <option>30</option>
-            <option>50</option>
-            <option>100</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
          </select>
-         <button id="rbx_apply">Apply</button>
+         <button id="rbx_show">Show</button>
       </p>
       <p id="rbx_types"></p>
       <p class="pages" id="rbx_pages"></p>
