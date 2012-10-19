@@ -1,8 +1,27 @@
--module(record_formatter_html).
+%% ``The contents of this file are subject to the Erlang Public License,
+%% Version 1.1, (the "License"); you may not use this file except in
+%% compliance with the License. You should have received a copy of the
+%% Erlang Public License along with this software. If not, it can be
+%% retrieved via the world wide web at http://www.erlang.org/.
+%%
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+%% the License for the specific language governing rights and limitations
+%% under the License.
+%%
+%% The Initial Developer of the Original Code is Ericsson Utvecklings AB.
+%% Portions created by Ericsson are Copyright 1999, Ericsson Utvecklings
+%% AB. All Rights Reserved.''
+%%
+
+-module(report_formatter_html).
 
 %% intermodule exports
 -export([format/2]).
 
+%=======================================================================================================================
+%  public interface
+%=======================================================================================================================
 format({Date, {error_report, _GL, {Pid, crash_report, CrashReport}}}, UtcLog) ->
    print_info(format_h("CRASH REPORT", Pid, Date, UtcLog), format_c(CrashReport));
 format({Date, {error_report, _GL, {Pid, supervisor_report, SupReport}}}, UtcLog)->
@@ -30,9 +49,9 @@ format(Report, _UtcLog) ->
 format_h(Header, Pid, Date, UtcLog) ->
    io_lib:format("<tr><th>~s</th><th>~w</th><th>~s</th></tr>", [Header, Pid, rbx_utils:date_to_str(Date, UtcLog)]).
 
-%%-----------------------------------------------------------------
-%% Crash report
-%%-----------------------------------------------------------------
+%=======================================================================================================================
+%  Crash report
+%=======================================================================================================================
 format_c([OwnReport, LinkReport]) ->
    [{items, {"Crashing process", OwnReport}}, format_neighbours(LinkReport)].
 
@@ -40,9 +59,9 @@ format_neighbours([Data| Rest]) ->
    [{newline, 1},{items, {"Neighbour process", Data}} | format_neighbours(Rest)];
 format_neighbours([]) -> [].
 
-%%-----------------------------------------------------------------
-%% Supervisor report
-%%-----------------------------------------------------------------
+%=======================================================================================================================
+%  Supervisor report
+%=======================================================================================================================
 format_s(Data) ->
    SuperName = proplists:get_value(supervisor, Data),
    ErrorContext = proplists:get_value(errorContext, Data),
@@ -59,9 +78,9 @@ transform_mfa({mfa, Value}) ->
 transform_mfa(X) ->
    X.
 
-%%-----------------------------------------------------------------
-%% Progress report
-%%-----------------------------------------------------------------
+%=======================================================================================================================
+%  Progress report
+%=======================================================================================================================
 format_p(Data) ->
    [{data, Data}].
 
@@ -109,9 +128,9 @@ get_format(Value) ->
 	   false -> "~p"
    end.
 
-%%-----------------------------------------------------------------
-%% Items
-%%-----------------------------------------------------------------
+%=======================================================================================================================
+%  Items
+%=======================================================================================================================
 print_items(Name, Items) ->
    [print_one_line(Name, " ") | print_item_elements(Items)].
 

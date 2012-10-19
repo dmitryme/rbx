@@ -17,7 +17,7 @@ a:hover {
 p.pages {
 }
 
-table.records {
+table.reports {
    font-family: "Lucida Grande","Segoe UI","Trebuchet MS",Tahoma,Helvetica,Arial,sans-serif;
    font-size: 13px;
    margin: 0px;
@@ -44,87 +44,87 @@ table.rdisplay_data {
    background-color: #F1F1F1;
 }
 
-.records th.show_col{
+.reports th.show_col{
    width: 50px;
    text-align: center;
    background-color: #999797;
 }
 
-.records th.no_col{
+.reports th.no_col{
    width: 50px;
    text-align: right;
    background-color: #999797;
 }
 
-.records th.type_col{
+.reports th.type_col{
    width: 100px;
    text-align: right;
    background-color: #999797;
 }
 
-.records th.pid_col{
+.reports th.pid_col{
    width: 100px;
    text-align: right;
    background-color: #999797;
 }
 
-.records th.date_col{
+.reports th.date_col{
    width: 130px;
    text-align: center;
    background-color: #999797;
 }
 
-.records td{
+.reports td{
    text-align: right;
 }
 
-.records td.show_col{
+.reports td.show_col{
    text-align: center;
 }
 
-.records tr:hover
+.reports tr:hover
 {
    background-color: #F1F1F1;
    cursor: pointer;
 }
 
-.records tr.error
+.reports tr.error
 {
    background-color: #FFDDDD;
 }
 
-.records tr.error:hover
+.reports tr.error:hover
 {
    background-color: #F1F1F1;
    cursor: pointer;
 }
 
-.records tr.warning
+.reports tr.warning
 {
    background-color: #F9F8D0;
 }
 
-.records tr.warning:hover
+.reports tr.warning:hover
 {
    background-color: #F1F1F1;
    cursor: pointer;
 }
 
-.records tr.progress {
+.reports tr.progress {
    background-color: #FFFFFF;
 }
 
-.records tr.progress:hover
+.reports tr.progress:hover
 {
    background-color: #F1F1F1;
    cursor: pointer;
 }
 
-.records tr.info{
+.reports tr.info{
    background-color: #FFFFFF;
 }
 
-.records tr.info:hover
+.reports tr.info:hover
 {
    background-color: #F1F1F1;
    cursor: pointer;

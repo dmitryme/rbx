@@ -1,3 +1,15 @@
+%% ``The contents of this file are subject to the Erlang Public License,
+%% Version 1.1, (the "License"); you may not use this file except in
+%% compliance with the License. You should have received a copy of the
+%% Erlang Public License along with this software. If not, it can be
+%% retrieved via the world wide web at http://www.erlang.org/.
+%%
+%% Software distributed under the License is distributed on an "AS IS"
+%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+%% the License for the specific language governing rights and limitations
+%% under the License.
+%%
+
 -module(rbx_cons).
 
 -behaviour(gen_server).
@@ -7,12 +19,59 @@
          handle_cast/2, handle_info/2, code_change/3]).
 
 %% public exports
--export([list/0, list/1, rescan/0, rescan/1, show/0, show/1, start_log/1, stop_log/0, attach/1, detach/0]).
+-export([list/0, list/1, rescan/0, rescan/1, show/0, show/1, start_log/1, stop_log/0, attach/1, detach/0, attached_node/0]).
 
 -record(state, {device, node, utc_log}).
 
-%======================================================================================================================
-%  gen_server interface functions
+%=======================================================================================================================
+% public interface
+%=======================================================================================================================
+-spec rescan() -> ok.
+rescan() ->
+   rescan(all).
+
+-spec rescan(pos_integer() | all) -> ok.
+rescan(MaxReports) ->
+   gen_server:cast(rbx_cons, {rescan, MaxReports}).
+
+-spec list() -> string().
+list() ->
+   list([]).
+
+-spec list(rbx:filter()) -> string().
+list(Filter) ->
+   gen_server:call(rbx_cons, {list, Filter}).
+
+-spec show() -> string().
+show() ->
+   show(all).
+
+-spec show([pos_integer()]) -> string().
+show(Number) ->
+   gen_server:call(rbx_cons, {show, Number}).
+
+-spec start_log(string()) -> ok.
+start_log(Filename) ->
+   gen_server:cast(rbx_cons, {start_log, Filename}).
+
+-spec stop_log() -> ok.
+stop_log() ->
+   gen_server:cast(rbx_cons, stop_log).
+
+-spec attach(node()) -> ok.
+attach(Node) ->
+   gen_server:call(rbx_cons, {attach, Node}).
+
+-spec detach() -> ok.
+detach() ->
+   gen_server:cast(rbx_cons, detach).
+
+-spec attached_node() -> atom().
+attached_node() ->
+   gen_server:call(rbx_cons, attached_node).
+
+%=======================================================================================================================
+% gen_server interface functions
 %=======================================================================================================================
 start() -> start([]).
 start(Options) ->
@@ -23,37 +82,6 @@ start(Options) ->
 start_link(Options) ->
    gen_server:start_link({local, rbx_cons}, ?MODULE, Options, []).
 
-rescan() ->
-   rescan(all).
-
-rescan(MaxRecords) ->
-   gen_server:cast(rbx_cons, {rescan, MaxRecords}).
-
-list() ->
-   list([]).
-
-list(Filter) ->
-   gen_server:call(rbx_cons, {list, Filter}).
-
-show() ->
-   show(all).
-
-show(Number) ->
-   gen_server:call(rbx_cons, {show, Number}).
-
-start_log(Filename) ->
-   gen_server:cast(rbx_cons, {start_log, Filename}).
-
-stop_log() ->
-   gen_server:cast(rbx_cons, stop_log).
-
-attach(_Node) -> ok.
-
-detach() -> ok.
-
-%=======================================================================================================================
-%  gen_server interface functions
-%=======================================================================================================================
 init(Options) ->
    Log = rbx_utils:get_option(start_log, Options, standard_io),
    Device = open_log_file(Log),
@@ -69,23 +97,41 @@ handle_call({list, Filters}, _From, State) ->
    {reply, ok, State};
 handle_call({show, Number}, _From, State) when is_number(Number) ->
    Report = rbx:show(State#state.node, Number),
-   record_formatter_cons:format(State#state.device, State#state.utc_log, Report),
+   report_formatter_cons:format(State#state.device, State#state.utc_log, Report),
    {reply, ok, State};
 handle_call({show, NumList}, _From, State) when is_list(NumList) ->
    Reports = rbx:show(State#state.node, NumList),
-   Fun = fun(Report) -> record_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
+   Fun = fun(Report) -> report_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
    lists:foreach(Fun, Reports),
    {reply, ok, State};
 handle_call({show, all}, _From, State) ->
    Reports = rbx:show(State#state.node, all),
-   Fun = fun(Report) -> record_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
+   Fun = fun(Report) -> report_formatter_cons:format(State#state.device, State#state.utc_log, Report) end,
    lists:foreach(Fun, Reports),
    {reply, ok, State};
+handle_call({attach, Node}, _From, State) ->
+   case net_adm:ping(Node) of
+      pong ->
+         Res = rpc:call(Node, erlang, whereis, [rbx]),
+         if
+            is_pid(Res) ->
+               io:format("Attached to node ~p~n", [Node]),
+               {reply, ok, State#state{node = Node}};
+            true ->
+               io:format("rbx not started on ~p~n", [Node]),
+               {reply, error, State}
+         end;
+      pang ->
+         io:format("Handshake with ~p failed.~n", [Node]),
+         {reply, error, State}
+   end;
+handle_call(attached_node, _From, State) ->
+   {reply, State#state.node, State};
 handle_call(_, _, State) ->
    {reply, ok, State}.
 
-handle_cast({rescan, MaxRecords}, State) ->
-   rbx:rescan(State#state.node, MaxRecords),
+handle_cast({rescan, MaxReports}, State) ->
+   rbx:rescan(State#state.node, MaxReports),
    {noreply, State};
 handle_cast({start_log, Filename}, State) ->
    NewDevice = open_log_file(Filename),
@@ -93,6 +139,8 @@ handle_cast({start_log, Filename}, State) ->
 handle_cast(stop_log, State) ->
    close_device(State#state.device),
    {noreply, State#state{device = standard_io}};
+handle_cast(detach, State) ->
+   {noreply, State#state{node = node()}};
 handle_cast(_Msg, State) ->
    {noreply, State}.
 
