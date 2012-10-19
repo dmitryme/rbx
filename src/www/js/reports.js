@@ -53,7 +53,7 @@ function show_reports(reports)
             recs = "[" + rec.no + "]";
          }
          var node = $("#rbx_node").val();
-         $.post("/get_sel_reports", "{" + node + "," + recs + "}.", function(res)
+         $.post("/get_sel_reports", "{'" + node + "'," + recs + "}.", function(res)
          {
             var body = $("body", top.frames[1].document);
             body.children().remove();
@@ -113,7 +113,7 @@ function get_replist(page, doPagination)
       ignTypesList += t;
    });
    ignTypesList += "]";
-   var request = "{clstate, \"" + reg_exp + "\"," + ignTypesList + "," + node + "," + doRescan + "," + maxReports
+   var request = "{clstate, \"" + reg_exp + "\"," + ignTypesList + ",'" + node + "'," + doRescan + "," + maxReports
       + "," + page + "," + recOnPage + "}.";
    $.post("/get_replist", request, function(res)
    {
