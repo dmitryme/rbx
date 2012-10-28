@@ -4,6 +4,6 @@ mkdir -p log
 
 erl -boot start_sasl \
     -config start.config \
-    -name ebin@$HOST \
+    -sname ebin \
     -setcookie 123 \
     -eval "application:start(rbx)"
