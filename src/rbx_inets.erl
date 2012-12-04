@@ -42,7 +42,8 @@ start_link(Options) ->
 
 init(Options) ->
    inets:start(),
-   DocRoot = filename:nativename(rbx_utils:get_option(document_root, Options, ".")),
+   {ok, App} = application:get_application(),
+   DocRoot = code:priv_dir(App) ++ "/inets",
    {ok, Pid} = inets:start(httpd, [
       {port, rbx_utils:get_option(inets_port, Options, 8000)},
       {server_name, "rbx"},
@@ -109,7 +110,7 @@ do(#mod{request_uri = Uri, entity_body = RecList}) when Uri == "/get_sel_reports
    Response = get_sel_reports(RecList),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri})  when Uri == "/" ->
-   {ok, Bin} = file:read_file(get_doc_root() ++ "/www/index.html"),
+   {ok, Bin} = file:read_file(get_doc_root() ++ "/index.html"),
    Response = io_lib:format(binary_to_list(Bin), [node()]),
    {proceed, [{response, {200, Response}}]};
 do(#mod{request_uri = Uri})  when Uri == "/favicon.ico" ->
